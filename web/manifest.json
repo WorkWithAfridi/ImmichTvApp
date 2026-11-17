@@ -1,0 +1,35 @@
+{
+    "name": "Immich TV",
+    "short_name": "Immich TV",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#071014",
+    "theme_color": "#071014",
+    "description": "Open source, TV-first Immich client for browsing your self-hosted photo and video library on Android TV, Google TV, and the web.",
+    "orientation": "any",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
