@@ -1,0 +1,1 @@
+enum OnboardingInputMethod { tvKeyboard, nativeKeyboard }
