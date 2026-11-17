@@ -49,6 +49,7 @@ Current product direction:
 - Connect to an existing Immich server
 - Sign in with either your Immich login or an API token
 - Save profiles locally for fast re-entry on shared TV devices
+- Protect saved profiles with an optional 4-digit PIN, configurable from Settings
 - Browse timeline assets in a TV-optimized layout
 - Jump between years from a horizontal year rail
 - Open albums, people, and favorites

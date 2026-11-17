@@ -157,8 +157,8 @@ class LibraryCubit extends Cubit<LibraryState> {
           final favorites = await _mediaRepository.fetchFavoritesPage(
             _session,
             sortOrder: state.favoritesSortOrder,
-      );
-      emit(
+          );
+          emit(
             state.copyWith(
               selectedTab: tab,
               favorites: favorites.items,
@@ -171,6 +171,16 @@ class LibraryCubit extends Cubit<LibraryState> {
             ),
           );
           _ensureRefreshPolling();
+        case LibraryTab.settings:
+          // Settings is rendered from its own cubit and loads no library data.
+          emit(
+            state.copyWith(
+              selectedTab: tab,
+              status: LibraryLoadStatus.success,
+              isLoadingMore: false,
+              clearError: true,
+            ),
+          );
       }
     } catch (error) {
       emit(
@@ -204,6 +214,8 @@ class LibraryCubit extends Cubit<LibraryState> {
       case LibraryTab.people:
         return;
       case LibraryTab.albums:
+        return;
+      case LibraryTab.settings:
         return;
     }
   }
@@ -389,6 +401,7 @@ class LibraryCubit extends Cubit<LibraryState> {
       LibraryTab.albums => state.hasLoadedAlbums,
       LibraryTab.people => state.hasLoadedPeople,
       LibraryTab.favorites => state.hasLoadedFavorites,
+      LibraryTab.settings => true,
     };
   }
 

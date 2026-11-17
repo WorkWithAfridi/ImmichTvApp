@@ -41,7 +41,7 @@ If you choose to save a profile on your device, Immich TV may store:
 - Email address
 - Server URL and related server configuration
 - Last-used timestamp
-- A 4-digit profile PIN
+- An optional 4-digit profile PIN
 - Your Immich password for saved-profile sign-in
 
 Immich TV stores profile metadata using local device preferences and stores saved credentials and PIN data using secure device storage where available.

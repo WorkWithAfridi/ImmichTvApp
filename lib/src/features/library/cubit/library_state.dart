@@ -5,7 +5,7 @@ import '../../../core/models/asset_sort_order.dart';
 import '../../../core/models/asset_summary.dart';
 import '../../../core/models/person_summary.dart';
 
-enum LibraryTab { timeline, albums, people, favorites }
+enum LibraryTab { timeline, albums, people, favorites, settings }
 
 enum LibraryLoadStatus { idle, loading, success, failure }
 
@@ -60,15 +60,17 @@ class LibraryState extends Equatable {
       LibraryTab.people => false,
       LibraryTab.favorites => hasMoreFavorites,
       LibraryTab.albums => false,
+      LibraryTab.settings => false,
     };
   }
 
   List<Object> get activeItems {
     return switch (selectedTab) {
-    LibraryTab.timeline => timeline,
-    LibraryTab.albums => albums,
-    LibraryTab.people => people,
+      LibraryTab.timeline => timeline,
+      LibraryTab.albums => albums,
+      LibraryTab.people => people,
       LibraryTab.favorites => favorites,
+      LibraryTab.settings => const <Object>[],
     };
   }
 

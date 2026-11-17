@@ -11,6 +11,7 @@ import '../../core/models/asset_summary.dart';
 import '../../core/models/authenticated_session.dart';
 import '../../core/models/person_summary.dart';
 import '../../core/repositories/asset_image_repository.dart';
+import '../../core/repositories/auth_repository.dart';
 import '../../core/repositories/media_repository.dart';
 import '../../shared/presentation/app_breakpoints.dart';
 import '../../shared/presentation/app_colors.dart';
@@ -21,16 +22,20 @@ import '../../shared/presentation/app_scale.dart';
 import '../../shared/presentation/app_spacing.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
 import '../../shared/presentation/widgets/loading_skeleton.dart';
+import '../../shared/presentation/widgets/on_screen_keyboard/on_screen_keyboard.dart';
 import '../../shared/presentation/widgets/tv_focusable.dart';
 import '../app_flow/cubit/app_flow_cubit.dart';
 import '../library/cubit/library_cubit.dart';
 import '../library/cubit/library_state.dart';
+import '../settings/cubit/settings_cubit.dart';
+import '../settings/cubit/settings_state.dart';
 import '../viewer/asset_viewer_screen.dart';
 
 part 'home_sections.part.dart';
 part 'home_albums.part.dart';
 part 'home_people.part.dart';
 part 'home_shared.part.dart';
+part 'home_settings.part.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.session});
@@ -48,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final FocusNode _albumsContentFocusNode;
   late final FocusNode _peopleContentFocusNode;
   late final FocusNode _favoritesContentFocusNode;
+  late final FocusNode _settingsContentFocusNode;
   bool _isSidebarOpen = false;
 
   @override
@@ -55,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _menuToggleFocusNode = FocusNode(debugLabel: 'home-menu-toggle');
     _drawerFocusNodes = List<FocusNode>.generate(
-      6,
+      7,
       (index) => FocusNode(debugLabel: 'home-drawer-$index'),
     );
     _timelineContentFocusNode = FocusNode(debugLabel: 'home-timeline-content');
@@ -64,6 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _favoritesContentFocusNode = FocusNode(
       debugLabel: 'home-favorites-content',
     );
+    _settingsContentFocusNode = FocusNode(debugLabel: 'home-settings-content');
   }
 
   @override
@@ -76,6 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _albumsContentFocusNode.dispose();
     _peopleContentFocusNode.dispose();
     _favoritesContentFocusNode.dispose();
+    _settingsContentFocusNode.dispose();
     super.dispose();
   }
 
@@ -109,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
         LibraryTab.albums => 1,
         LibraryTab.people => 2,
         LibraryTab.favorites => 3,
+        LibraryTab.settings => 4,
       },
     );
   }
@@ -140,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
       LibraryTab.albums => _albumsContentFocusNode,
       LibraryTab.people => _peopleContentFocusNode,
       LibraryTab.favorites => _favoritesContentFocusNode,
+      LibraryTab.settings => _settingsContentFocusNode,
     };
 
     if (focusNode.context == null || !focusNode.canRequestFocus) {
@@ -180,6 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           albumsContentFocusNode: _albumsContentFocusNode,
                           peopleContentFocusNode: _peopleContentFocusNode,
                           favoritesContentFocusNode: _favoritesContentFocusNode,
+                          settingsContentFocusNode: _settingsContentFocusNode,
                           onToggleSidebar: _toggleSidebar,
                           onOpenSidebarForTab: _openSidebarForTab,
                         ),
@@ -384,6 +395,25 @@ class _Sidebar extends StatelessWidget {
                         },
                         focusNode: focusNodes[3],
                       ),
+                      SizedBox(
+                        height: scale.space(AppSpacing.xs, min: 8, max: 8),
+                      ),
+                      _SidebarMenuButton(
+                        label: 'Settings',
+                        subtitle: 'Profile preferences',
+                        icon: Icons.settings_outlined,
+                        isSelected: state.selectedTab == LibraryTab.settings,
+                        onPressed: () {
+                          context.read<LibraryCubit>().selectTab(
+                            LibraryTab.settings,
+                          );
+                          onCloseSidebar(
+                            focusMenuToggle: false,
+                            focusContentTab: LibraryTab.settings,
+                          );
+                        },
+                        focusNode: focusNodes[4],
+                      ),
                     ],
                   ),
                 ),
@@ -392,7 +422,7 @@ class _Sidebar extends StatelessWidget {
               _SidebarActionButton(
                 icon: Icons.switch_account_rounded,
                 label: 'Switch user',
-                focusNode: focusNodes[4],
+                focusNode: focusNodes[5],
                 onPressed: () =>
                     context.read<AppFlowCubit>().showProfilePicker(),
               ),
@@ -400,7 +430,7 @@ class _Sidebar extends StatelessWidget {
               _SidebarActionButton(
                 icon: Icons.logout_rounded,
                 label: 'Sign out',
-                focusNode: focusNodes[5],
+                focusNode: focusNodes[6],
                 onPressed: () => context.read<AppFlowCubit>().signOut(),
               ),
             ],
@@ -656,6 +686,7 @@ class _ContentPane extends StatelessWidget {
     required this.albumsContentFocusNode,
     required this.peopleContentFocusNode,
     required this.favoritesContentFocusNode,
+    required this.settingsContentFocusNode,
     required this.onToggleSidebar,
     required this.onOpenSidebarForTab,
   });
@@ -668,6 +699,7 @@ class _ContentPane extends StatelessWidget {
   final FocusNode albumsContentFocusNode;
   final FocusNode peopleContentFocusNode;
   final FocusNode favoritesContentFocusNode;
+  final FocusNode settingsContentFocusNode;
   final VoidCallback onToggleSidebar;
   final ValueChanged<LibraryTab> onOpenSidebarForTab;
 
@@ -701,6 +733,7 @@ class _ContentPane extends StatelessWidget {
             albumsContentFocusNode: albumsContentFocusNode,
             peopleContentFocusNode: peopleContentFocusNode,
             favoritesContentFocusNode: favoritesContentFocusNode,
+            settingsContentFocusNode: settingsContentFocusNode,
             onToggleSidebar: onToggleSidebar,
             onOpenSidebarForTab: onOpenSidebarForTab,
           ),
@@ -783,6 +816,7 @@ class _LibraryContent extends StatelessWidget {
     required this.albumsContentFocusNode,
     required this.peopleContentFocusNode,
     required this.favoritesContentFocusNode,
+    required this.settingsContentFocusNode,
     required this.onToggleSidebar,
     required this.onOpenSidebarForTab,
   });
@@ -795,6 +829,7 @@ class _LibraryContent extends StatelessWidget {
   final FocusNode albumsContentFocusNode;
   final FocusNode peopleContentFocusNode;
   final FocusNode favoritesContentFocusNode;
+  final FocusNode settingsContentFocusNode;
   final VoidCallback onToggleSidebar;
   final ValueChanged<LibraryTab> onOpenSidebarForTab;
 
@@ -856,6 +891,20 @@ class _LibraryContent extends StatelessWidget {
         sortOrder: state.favoritesSortOrder,
         onSortOrderChanged: (sortOrder) =>
             context.read<LibraryCubit>().updateFavoritesSortOrder(sortOrder),
+      ),
+      LibraryTab.settings => BlocProvider(
+        create: (context) => SettingsCubit(
+          authRepository: context.read<AuthRepository>(),
+          session: session,
+        ),
+        child: SettingsScreen(
+          session: session,
+          isSidebarOpen: isSidebarOpen,
+          primaryContentFocusNode: settingsContentFocusNode,
+          menuToggleFocusNode: menuToggleFocusNode,
+          onToggleSidebar: onToggleSidebar,
+          onOpenSidebar: () => onOpenSidebarForTab(LibraryTab.settings),
+        ),
       ),
     };
   }
