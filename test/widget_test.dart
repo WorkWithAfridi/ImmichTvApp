@@ -47,7 +47,7 @@ void main() {
       find.text('Choose how you want to type during setup'),
       findsOneWidget,
     );
-    expect(find.text('TV keyboard'), findsOneWidget);
+    expect(find.text('Screen keyboard'), findsOneWidget);
     expect(find.text('Device keyboard'), findsOneWidget);
     expect(find.text('Continue'), findsOneWidget);
   });
@@ -870,7 +870,7 @@ Future<void> _advancePastInputSelection(
   OnboardingInputMethod method = OnboardingInputMethod.tvKeyboard,
 }) async {
   final optionLabel = switch (method) {
-    OnboardingInputMethod.tvKeyboard => 'TV keyboard',
+    OnboardingInputMethod.tvKeyboard => 'Screen keyboard',
     OnboardingInputMethod.nativeKeyboard => 'Device keyboard',
   };
   final optionFinder = find.text(optionLabel);

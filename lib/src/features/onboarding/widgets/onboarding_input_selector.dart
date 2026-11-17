@@ -86,9 +86,9 @@ class OnboardingInputSelector extends StatelessWidget {
                       width: cardWidth,
                       child: _InputMethodCard(
                         focusNode: tvFocusNode,
-                        title: 'TV keyboard',
+                        title: 'Screen keyboard',
                         description:
-                            'Use the on-screen keyboard directly on the TV. Best when you only have the remote and want to finish setup without another device.',
+                            'Use the keyboard that appears on screen. Best when you only have the remote and want to finish setup without another device.',
                         icon: Icons.keyboard_rounded,
                         selected:
                             selectedMethod == OnboardingInputMethod.tvKeyboard,
