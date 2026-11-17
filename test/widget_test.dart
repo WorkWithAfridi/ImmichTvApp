@@ -1004,16 +1004,23 @@ class FakeAuthRepository implements AuthRepository {
     required AuthenticatedSession session,
     String? password,
     String? apiKey,
-    required String pin,
+    String? pin,
   }) async {}
 
   @override
   Future<AuthenticatedSession> signInWithSavedProfile({
     required String profileId,
-    required String pin,
+    String? pin,
   }) async {
     return restoredSession ?? _demoSession();
   }
+
+  @override
+  Future<void> setProfilePin({
+    required String profileId,
+    required bool enabled,
+    String? pin,
+  }) async {}
 
   @override
   Future<void> signOut() async {}

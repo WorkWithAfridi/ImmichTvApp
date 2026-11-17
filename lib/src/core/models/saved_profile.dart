@@ -11,6 +11,7 @@ class SavedProfile extends Equatable {
     required this.serverConfig,
     required this.lastUsedAt,
     this.authMethod = ImmichAuthMethod.password,
+    this.pinEnabled = true,
   });
 
   final String id;
@@ -19,6 +20,11 @@ class SavedProfile extends Equatable {
   final ServerConfig serverConfig;
   final DateTime lastUsedAt;
   final ImmichAuthMethod authMethod;
+
+  /// Whether a 4-digit PIN is required to reopen this profile.
+  ///
+  /// Defaults to true so profiles saved by earlier versions keep their PIN.
+  final bool pinEnabled;
 
   String get initials {
     final source = name.trim().isEmpty ? email : name;
@@ -38,6 +44,7 @@ class SavedProfile extends Equatable {
     ServerConfig? serverConfig,
     DateTime? lastUsedAt,
     ImmichAuthMethod? authMethod,
+    bool? pinEnabled,
   }) {
     return SavedProfile(
       id: id ?? this.id,
@@ -46,6 +53,7 @@ class SavedProfile extends Equatable {
       serverConfig: serverConfig ?? this.serverConfig,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
       authMethod: authMethod ?? this.authMethod,
+      pinEnabled: pinEnabled ?? this.pinEnabled,
     );
   }
 
@@ -57,6 +65,7 @@ class SavedProfile extends Equatable {
       'serverConfig': serverConfig.toJson(),
       'lastUsedAt': lastUsedAt.toIso8601String(),
       'authMethod': authMethod.storageValue,
+      'pinEnabled': pinEnabled,
     };
   }
 
@@ -72,6 +81,7 @@ class SavedProfile extends Equatable {
       authMethod: ImmichAuthMethod.fromStorageValue(
         json['authMethod'] as String?,
       ),
+      pinEnabled: json['pinEnabled'] as bool? ?? true,
     );
   }
 
@@ -83,5 +93,6 @@ class SavedProfile extends Equatable {
     serverConfig,
     lastUsedAt,
     authMethod,
+    pinEnabled,
   ];
 }

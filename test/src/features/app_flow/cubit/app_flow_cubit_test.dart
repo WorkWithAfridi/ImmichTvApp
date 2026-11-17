@@ -56,7 +56,7 @@ class _FakeAuthRepository implements AuthRepository {
     required AuthenticatedSession session,
     String? password,
     String? apiKey,
-    required String pin,
+    String? pin,
   }) async {}
 
   @override
@@ -75,8 +75,15 @@ class _FakeAuthRepository implements AuthRepository {
   @override
   Future<AuthenticatedSession> signInWithSavedProfile({
     required String profileId,
-    required String pin,
+    String? pin,
   }) async => _session(email: 'saved@example.com', name: 'Saved');
+
+  @override
+  Future<void> setProfilePin({
+    required String profileId,
+    required bool enabled,
+    String? pin,
+  }) async {}
 
   @override
   Future<void> signOut() async {}

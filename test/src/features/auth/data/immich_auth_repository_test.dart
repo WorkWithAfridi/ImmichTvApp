@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:immichtv/src/core/config/demo_mode.dart';
+import 'package:immichtv/src/core/models/authenticated_session.dart';
 import 'package:immichtv/src/core/models/immich_auth_method.dart';
+import 'package:immichtv/src/core/models/user_profile.dart';
 import 'package:immichtv/src/core/models/saved_profile.dart';
 import 'package:immichtv/src/core/models/saved_profile_secret.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
@@ -11,6 +13,76 @@ import 'package:immichtv/src/platform/storage/profile_storage.dart';
 import 'package:immichtv/src/features/auth/data/immich_auth_repository.dart';
 
 void main() {
+  test('saving a profile without a PIN marks it as unprotected', () async {
+    final profileStorage = _InMemoryProfileStorage(
+      profiles: const [],
+      secrets: const {},
+    );
+    final repository = ImmichAuthRepository(
+      dio: Dio(),
+      profileStorage: profileStorage,
+    );
+
+    await repository.saveProfile(session: _session(), password: 'password');
+
+    final profiles = await repository.getSavedProfiles();
+    expect(profiles, hasLength(1));
+    expect(profiles.single.pinEnabled, isFalse);
+    final secret = await profileStorage.readProfileSecret(profiles.single.id);
+    expect(secret?.pin, isNull);
+    expect(secret?.password, 'password');
+  });
+
+  test('a profile without a PIN can be reopened without a PIN', () async {
+    final profileStorage = _InMemoryProfileStorage(
+      profiles: const [],
+      secrets: const {},
+    );
+    final repository = ImmichAuthRepository(
+      dio: Dio()..httpClientAdapter = _ThrowingHttpClientAdapter(),
+      profileStorage: profileStorage,
+    );
+
+    await repository.saveProfile(
+      session: _session(serverUrl: DemoMode.serverUrl),
+      password: DemoMode.password,
+    );
+
+    final profiles = await repository.getSavedProfiles();
+    final session = await repository.signInWithSavedProfile(
+      profileId: profiles.single.id,
+    );
+    expect(session.user.email, DemoMode.email);
+  });
+
+  test('setProfilePin can enable and disable PIN protection', () async {
+    final profileStorage = _InMemoryProfileStorage(
+      profiles: const [],
+      secrets: const {},
+    );
+    final repository = ImmichAuthRepository(
+      dio: Dio(),
+      profileStorage: profileStorage,
+    );
+
+    await repository.saveProfile(session: _session(), password: 'password');
+    final profileId = (await repository.getSavedProfiles()).single.id;
+
+    await repository.setProfilePin(
+      profileId: profileId,
+      enabled: true,
+      pin: '4321',
+    );
+    var profile = (await repository.getSavedProfiles()).single;
+    expect(profile.pinEnabled, isTrue);
+    expect((await profileStorage.readProfileSecret(profileId))?.pin, '4321');
+
+    await repository.setProfilePin(profileId: profileId, enabled: false);
+    profile = (await repository.getSavedProfiles()).single;
+    expect(profile.pinEnabled, isFalse);
+    expect((await profileStorage.readProfileSecret(profileId))?.pin, isNull);
+  });
+
   test(
     'saved demo profiles unlock through mock auth without remote login',
     () async {
@@ -181,6 +253,22 @@ void main() {
         equals(<String>['GET https://photos.example.com/api/users/me']),
       );
     },
+  );
+}
+
+AuthenticatedSession _session({
+  String serverUrl = 'https://photos.example.com',
+  String email = DemoMode.email,
+}) {
+  final uri = Uri.parse(serverUrl);
+  return AuthenticatedSession(
+    serverConfig: ServerConfig(
+      rawInput: serverUrl,
+      serverUrl: uri,
+      apiUrl: Uri.parse('$serverUrl/api'),
+    ),
+    accessToken: 'token',
+    user: UserProfile(id: 'user-1', email: email, name: 'Owner'),
   );
 }
 

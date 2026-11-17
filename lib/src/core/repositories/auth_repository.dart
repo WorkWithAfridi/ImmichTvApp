@@ -16,16 +16,26 @@ abstract class AuthRepository {
 
   Future<List<SavedProfile>> getSavedProfiles();
 
+  /// Saves a profile. [pin] is optional; omitting it creates a profile that
+  /// can be reopened without entering a PIN.
   Future<void> saveProfile({
     required AuthenticatedSession session,
     String? password,
     String? apiKey,
-    required String pin,
+    String? pin,
   });
 
   Future<AuthenticatedSession> signInWithSavedProfile({
     required String profileId,
-    required String pin,
+    String? pin,
+  });
+
+  /// Enables or disables PIN protection for an existing saved profile.
+  /// A new [pin] is required when [enabled] is true.
+  Future<void> setProfilePin({
+    required String profileId,
+    required bool enabled,
+    String? pin,
   });
 
   Future<void> signOut();

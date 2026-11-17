@@ -108,9 +108,11 @@ class ImmichAuthRepository implements AuthRepository {
     required AuthenticatedSession session,
     String? password,
     String? apiKey,
-    required String pin,
+    String? pin,
   }) async {
-    _validatePin(pin);
+    if (pin != null) {
+      _validatePin(pin);
+    }
     switch (session.authMethod) {
       case ImmichAuthMethod.password:
         if (password == null || password.isEmpty) {
@@ -128,7 +130,7 @@ class ImmichAuthRepository implements AuthRepository {
         }
     }
 
-    final profile = _savedProfileFromSession(session);
+    final profile = _savedProfileFromSession(session, pinEnabled: pin != null);
     await _profileStorage.saveProfile(profile);
     await _profileStorage.saveProfileSecret(
       profileId: profile.id,
@@ -139,10 +141,8 @@ class ImmichAuthRepository implements AuthRepository {
   @override
   Future<AuthenticatedSession> signInWithSavedProfile({
     required String profileId,
-    required String pin,
+    String? pin,
   }) async {
-    _validatePin(pin);
-
     final profiles = await _profileStorage.readProfiles();
     SavedProfile? profile;
     for (final item in profiles) {
@@ -172,11 +172,20 @@ class ImmichAuthRepository implements AuthRepository {
       );
     }
 
-    if (secret.pin != pin) {
-      throw const AppException(
-        'That PIN did not match this profile.',
-        code: 'invalid_pin',
-      );
+    if (profile.pinEnabled) {
+      if (pin == null) {
+        throw const AppException(
+          'Enter the PIN for this profile.',
+          code: 'pin_required',
+        );
+      }
+      _validatePin(pin);
+      if (secret.pin != pin) {
+        throw const AppException(
+          'That PIN did not match this profile.',
+          code: 'invalid_pin',
+        );
+      }
     }
 
     try {
@@ -192,13 +201,67 @@ class ImmichAuthRepository implements AuthRepository {
           authMethod: ImmichAuthMethod.apiKey,
         ),
       };
-      await _profileStorage.saveProfile(_savedProfileFromSession(session));
+      await _profileStorage.saveProfile(
+        profile.copyWith(lastUsedAt: DateTime.now()),
+      );
       return session;
     } on DioException catch (error) {
       throw profile.authMethod == ImmichAuthMethod.apiKey
           ? _mapApiKeyError(error)
           : _mapSignInError(error);
     }
+  }
+
+  @override
+  Future<void> setProfilePin({
+    required String profileId,
+    required bool enabled,
+    String? pin,
+  }) async {
+    final profiles = await _profileStorage.readProfiles();
+    SavedProfile? profile;
+    for (final item in profiles) {
+      if (item.id == profileId) {
+        profile = item;
+        break;
+      }
+    }
+    if (profile == null) {
+      throw const AppException(
+        'That profile is no longer available on this device.',
+        code: 'profile_not_found',
+      );
+    }
+
+    final secret = await _profileStorage.readProfileSecret(profileId);
+    if (secret == null) {
+      throw const AppException(
+        'Saved credentials for that profile are unavailable.',
+        code: 'profile_secret_missing',
+      );
+    }
+
+    String? nextPin;
+    if (enabled) {
+      if (pin == null) {
+        throw const AppException(
+          'Enter a 4-digit PIN to protect this profile.',
+          code: 'pin_required',
+        );
+      }
+      _validatePin(pin);
+      nextPin = pin;
+    }
+
+    await _profileStorage.saveProfile(profile.copyWith(pinEnabled: enabled));
+    await _profileStorage.saveProfileSecret(
+      profileId: profileId,
+      secret: SavedProfileSecret(
+        password: secret.password,
+        apiKey: secret.apiKey,
+        pin: nextPin,
+      ),
+    );
   }
 
   @override
@@ -299,7 +362,10 @@ class ImmichAuthRepository implements AuthRepository {
     );
   }
 
-  SavedProfile _savedProfileFromSession(AuthenticatedSession session) {
+  SavedProfile _savedProfileFromSession(
+    AuthenticatedSession session, {
+    bool pinEnabled = true,
+  }) {
     return SavedProfile(
       id: _profileIdForSession(session),
       name: session.user.name,
@@ -307,6 +373,7 @@ class ImmichAuthRepository implements AuthRepository {
       serverConfig: session.serverConfig,
       lastUsedAt: DateTime.now(),
       authMethod: session.authMethod,
+      pinEnabled: pinEnabled,
     );
   }
 
