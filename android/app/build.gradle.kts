@@ -15,6 +15,15 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+// Signing credentials are intentionally not committed. CI and fresh checkouts
+// fall back to the default debug signing when they are unavailable.
+val releaseStoreFile = keystoreProperties["storeFile"]?.let { file(it) }
+val hasReleaseSigning =
+    keystoreProperties["keyAlias"] != null &&
+        keystoreProperties["keyPassword"] != null &&
+        keystoreProperties["storePassword"] != null &&
+        releaseStoreFile?.exists() == true
+
 android {
     namespace = "com.workwithafridi.immichtv"
     compileSdk = flutter.compileSdkVersion
@@ -42,20 +51,22 @@ android {
         versionName = flutter.versionName
     }
 
-        signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = releaseStoreFile
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("release")
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
