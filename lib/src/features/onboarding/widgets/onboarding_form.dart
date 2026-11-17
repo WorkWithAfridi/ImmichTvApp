@@ -60,6 +60,7 @@ class OnboardingForm extends StatelessWidget {
     required this.onAuthMethodChanged,
     required this.onEmailNext,
     required this.onPrimaryAction,
+    required this.onSkipPin,
   });
 
   final ThemeData theme;
@@ -97,6 +98,7 @@ class OnboardingForm extends StatelessWidget {
   final ValueChanged<ImmichAuthMethod> onAuthMethodChanged;
   final VoidCallback onEmailNext;
   final VoidCallback onPrimaryAction;
+  final VoidCallback onSkipPin;
 
   @override
   Widget build(BuildContext context) {
@@ -401,8 +403,8 @@ class OnboardingForm extends StatelessWidget {
                           ? 'Confirm your 4-digit PIN'
                           : 'Create a 4-digit PIN',
                       caption: isConfirmingPin
-                          ? 'Enter the same four digits again.'
-                          : 'Use the PIN you want to unlock this profile on TV.',
+                          ? 'Enter the same four digits again, or choose Skip PIN.'
+                          : 'Optional. Use the PIN you want to unlock this profile on TV, or choose Skip PIN.',
                       titleStyle: pinPromptStyle,
                       captionStyle: pinCaptionStyle,
                       controller: isConfirmingPin
@@ -440,13 +442,13 @@ class OnboardingForm extends StatelessWidget {
                         enabled: !isSubmitting,
                         allowDecimal: false,
                         showDecimalButton: false,
-                        showDoneButton: false,
+                        showDoneButton: true,
                         maxLength: 4,
                         onMaxLengthReached: !isSubmitting
                             ? onPrimaryAction
                             : null,
-                        doneLabel: isConfirmingPin ? 'Save' : 'Next',
-                        onDone: onPrimaryAction,
+                        doneLabel: 'Skip',
+                        onDone: !isSubmitting ? onSkipPin : null,
                       ),
                     ),
                   ],

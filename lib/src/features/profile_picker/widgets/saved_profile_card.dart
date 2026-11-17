@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/errors/app_exception.dart';
 import '../../../core/models/authenticated_session.dart';
 import '../../../core/models/saved_profile.dart';
+import '../../../core/repositories/auth_repository.dart';
 import '../../../shared/presentation/app_colors.dart';
 import '../../../shared/presentation/app_durations.dart';
 import '../../../shared/presentation/app_focus_decoration.dart';
@@ -34,9 +36,34 @@ class SavedProfileCard extends StatelessWidget {
     return TvFocusable(
       autofocus: autofocus,
       onPressed: () async {
-        final session = await Navigator.of(context).push<AuthenticatedSession>(
-          MaterialPageRoute(builder: (_) => PinUnlockScreen(profile: profile)),
-        );
+        AuthenticatedSession? session;
+        if (profile.pinEnabled) {
+          session = await Navigator.of(context).push<AuthenticatedSession>(
+            MaterialPageRoute(
+              builder: (_) => PinUnlockScreen(profile: profile),
+            ),
+          );
+        } else {
+          try {
+            session = await context
+                .read<AuthRepository>()
+                .signInWithSavedProfile(profileId: profile.id);
+          } catch (error) {
+            if (!context.mounted) {
+              return;
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  error is AppException
+                      ? error.message
+                      : 'We could not open this profile right now.',
+                ),
+              ),
+            );
+            return;
+          }
+        }
 
         if (!context.mounted || session == null) {
           return;
@@ -98,11 +125,7 @@ class SavedProfileCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(
-                  height: scale.space(
-                    isTvLayout ? 18 : 14,
-                    min: 12,
-                    max: 18,
-                  ),
+                  height: scale.space(isTvLayout ? 18 : 14, min: 12, max: 18),
                 ),
                 Text(
                   profile.name,

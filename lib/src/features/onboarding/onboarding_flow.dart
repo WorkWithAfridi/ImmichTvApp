@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/config/demo_mode.dart';
 import '../../core/config/app_environment.dart';
 import '../../core/errors/app_exception.dart';
+import '../../core/models/authenticated_session.dart';
 import '../../core/models/immich_auth_method.dart';
 import '../../core/repositories/auth_repository.dart';
 import '../../core/repositories/server_repository.dart';
@@ -241,6 +242,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onEmailNext: _focusPasswordField,
                       onPrimaryAction: () =>
                           _handlePrimaryAction(context, state),
+                      onSkipPin: () => _handleSkipPin(context, state),
                     ),
             );
           },
@@ -254,8 +256,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     OnboardingState state,
   ) async {
     final onboardingCubit = context.read<OnboardingCubit>();
-    final appFlowCubit = context.read<AppFlowCubit>();
-    final authRepository = context.read<AuthRepository>();
     final messenger = ScaffoldMessenger.of(context);
 
     if (state.step == OnboardingStep.server) {
@@ -346,6 +346,32 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _confirmPinFieldFocusNode.requestFocus();
       return;
     }
+
+    await _saveProfileAndContinue(context, session, pin: pin);
+  }
+
+  Future<void> _handleSkipPin(
+    BuildContext context,
+    OnboardingState state,
+  ) async {
+    final session = state.pendingSession;
+    if (session == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in before setting up a PIN.')),
+      );
+      return;
+    }
+    await _saveProfileAndContinue(context, session, pin: null);
+  }
+
+  Future<void> _saveProfileAndContinue(
+    BuildContext context,
+    AuthenticatedSession session, {
+    required String? pin,
+  }) async {
+    final authRepository = context.read<AuthRepository>();
+    final appFlowCubit = context.read<AppFlowCubit>();
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       await authRepository.saveProfile(

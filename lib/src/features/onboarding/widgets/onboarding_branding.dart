@@ -33,7 +33,7 @@ class OnboardingBranding extends StatelessWidget {
           'Your server is ready. Paste your personal Immich API key to continue.',
       },
       OnboardingStep.pin =>
-        'Set a 4-digit PIN so this profile can be reopened quickly on future launches.',
+        'Optionally set a 4-digit PIN to protect this profile. You can skip it now and change this later in Settings.',
     };
 
     return Column(
