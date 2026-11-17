@@ -1,0 +1,669 @@
+part of 'home_screen.dart';
+
+class _TimelineSectionView extends StatelessWidget {
+  const _TimelineSectionView({
+    required this.session,
+    required this.title,
+    required this.selectedYear,
+    required this.status,
+    required this.errorMessage,
+    required this.assets,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.emptyMessage,
+    required this.isSidebarOpen,
+    required this.menuToggleFocusNode,
+    required this.primaryContentFocusNode,
+    required this.onToggleSidebar,
+    required this.onOpenSidebar,
+  });
+
+  final AuthenticatedSession session;
+  final String title;
+  final int selectedYear;
+  final LibraryLoadStatus status;
+  final String? errorMessage;
+  final List<AssetSummary> assets;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String emptyMessage;
+  final bool isSidebarOpen;
+  final FocusNode menuToggleFocusNode;
+  final FocusNode primaryContentFocusNode;
+  final VoidCallback onToggleSidebar;
+  final VoidCallback onOpenSidebar;
+
+  @override
+  Widget build(BuildContext context) {
+    return _TimelineSectionFrame(
+      title: title,
+      years: _timelineYearRange(),
+      selectedYear: selectedYear,
+      onYearSelected: (year) =>
+          context.read<LibraryCubit>().selectTimelineYear(year),
+      isSidebarOpen: isSidebarOpen,
+      menuToggleFocusNode: menuToggleFocusNode,
+      onToggleSidebar: onToggleSidebar,
+      child: _AnimatedSectionSwap(
+        switchKey:
+            'timeline-$selectedYear-${_sectionViewState(status, assets)}',
+        child: _buildBody(context),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (status == LibraryLoadStatus.loading) {
+      return const _TimelineLoadingSkeleton();
+    }
+
+    if (status == LibraryLoadStatus.failure) {
+      return _InfoPanel(
+        title: 'This section could not load',
+        body: errorMessage ?? 'Try again in a moment.',
+        accent: AppColors.error,
+      );
+    }
+
+    if (assets.isEmpty) {
+      return _InfoPanel(
+        title: 'No assets in $selectedYear',
+        body: 'There are no timeline assets available for this year yet.',
+        accent: AppColors.textMuted,
+      );
+    }
+    final groups = _groupTimelineAssets(assets);
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (!hasMore || isLoadingMore) {
+          return false;
+        }
+
+        final metrics = notification.metrics;
+        if (metrics.pixels >= metrics.maxScrollExtent - 600) {
+          context.read<LibraryCubit>().loadMore();
+        }
+
+        return false;
+      },
+      child: ListView.builder(
+        key: PageStorageKey<String>('timeline-list-$selectedYear'),
+        cacheExtent: 480,
+        itemCount: groups.length + (hasMore || isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index >= groups.length) {
+            return Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.md),
+              child: SizedBox(
+                height: 180,
+                child: _LoadMoreTile(
+                  isLoading: isLoadingMore,
+                  hasMore: hasMore,
+                ),
+              ),
+            );
+          }
+
+          final group = groups[index];
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: index == groups.length - 1 ? 0 : AppSpacing.xl,
+            ),
+            child: _DayAssetSection(
+              session: session,
+              group: group,
+              allAssets: assets,
+              primaryContentFocusNode: primaryContentFocusNode,
+              onOpenSidebar: onOpenSidebar,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AssetSectionView extends StatelessWidget {
+  const _AssetSectionView({
+    required this.session,
+    required this.title,
+    required this.status,
+    required this.errorMessage,
+    required this.assets,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.emptyMessage,
+    required this.isSidebarOpen,
+    required this.menuToggleFocusNode,
+    required this.primaryContentFocusNode,
+    required this.onToggleSidebar,
+    required this.onOpenSidebar,
+    required this.sortOrder,
+    required this.onSortOrderChanged,
+  });
+
+  final AuthenticatedSession session;
+  final String title;
+  final LibraryLoadStatus status;
+  final String? errorMessage;
+  final List<AssetSummary> assets;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String emptyMessage;
+  final bool isSidebarOpen;
+  final FocusNode menuToggleFocusNode;
+  final FocusNode primaryContentFocusNode;
+  final VoidCallback onToggleSidebar;
+  final VoidCallback onOpenSidebar;
+  final AssetSortOrder sortOrder;
+  final ValueChanged<AssetSortOrder> onSortOrderChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionFrame(
+      title: title,
+      isSidebarOpen: isSidebarOpen,
+      menuToggleFocusNode: menuToggleFocusNode,
+      onToggleSidebar: onToggleSidebar,
+      trailing: _AssetSortSelector(
+        value: sortOrder,
+        onChanged: onSortOrderChanged,
+      ),
+      child: _AnimatedSectionSwap(
+        switchKey: 'assets-$title-${_sectionViewState(status, assets)}',
+        child: _buildBody(context),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (status == LibraryLoadStatus.loading) {
+      return const _AssetGridLoadingSkeleton();
+    }
+
+    if (status == LibraryLoadStatus.failure) {
+      return _InfoPanel(
+        title: 'This section could not load',
+        body: errorMessage ?? 'Try again in a moment.',
+        accent: AppColors.error,
+      );
+    }
+
+    if (assets.isEmpty) {
+      return _InfoPanel(
+        title: 'Nothing here yet',
+        body: emptyMessage,
+        accent: AppColors.textMuted,
+      );
+    }
+
+    return _GroupedAssetSectionList(
+      session: session,
+      assets: assets,
+      hasMore: hasMore,
+      isLoadingMore: isLoadingMore,
+      storageKey: 'asset-list-$title',
+      primaryContentFocusNode: primaryContentFocusNode,
+      onLoadMore: () => context.read<LibraryCubit>().loadMore(),
+      onOpenSidebar: onOpenSidebar,
+    );
+  }
+}
+
+class _DayAssetSection extends StatelessWidget {
+  const _DayAssetSection({
+    required this.session,
+    required this.group,
+    required this.allAssets,
+    required this.onOpenSidebar,
+    this.primaryContentFocusNode,
+    this.onMoveLeftFromGrid,
+  });
+
+  final AuthenticatedSession session;
+  final _TimelineDayGroup group;
+  final List<AssetSummary> allAssets;
+  final FocusNode? primaryContentFocusNode;
+  final VoidCallback onOpenSidebar;
+  final VoidCallback? onMoveLeftFromGrid;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scale = AppScale.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenSize = MediaQuery.sizeOf(context);
+        final crossAxisCount = _resolveGridCrossAxisCount(screenSize);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _formatTimelineDay(group.day),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                fontSize: scale.text(15, min: 13, max: 15),
+              ),
+            ),
+            SizedBox(height: scale.space(AppSpacing.md, min: 12, max: 16)),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              cacheExtent: 240,
+              gridDelegate: _buildAssetGridDelegate(
+                constraints.maxWidth,
+                screenSize,
+              ),
+              itemCount: group.items.length,
+              itemBuilder: (context, index) {
+                final item = group.items[index];
+                return _AssetTile(
+                  session: session,
+                  asset: item.asset,
+                  autofocus: item.globalIndex == 0,
+                  focusNode: item.globalIndex == 0
+                      ? primaryContentFocusNode
+                      : null,
+                  onMoveLeft: index % crossAxisCount == 0
+                      ? onMoveLeftFromGrid
+                      : null,
+                  openDrawerOnLeft: index % crossAxisCount == 0,
+                  onOpenDrawer: onOpenSidebar,
+                  prefetchUrls: _nearbyThumbnailUrls(
+                    allAssets,
+                    item.globalIndex,
+                  ),
+                  onPressed: () => AssetViewerScreen.show(
+                    context,
+                    assets: allAssets,
+                    initialIndex: item.globalIndex,
+                    accessToken: session.accessToken,
+                    authMethod: session.authMethod,
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _GroupedAssetSectionList extends StatelessWidget {
+  const _GroupedAssetSectionList({
+    required this.session,
+    required this.assets,
+    required this.hasMore,
+    required this.isLoadingMore,
+    required this.storageKey,
+    required this.onLoadMore,
+    required this.onOpenSidebar,
+    this.primaryContentFocusNode,
+    this.onMoveLeftFromGrid,
+    this.headingTitle,
+    this.headingSubtitle,
+  });
+
+  final AuthenticatedSession session;
+  final List<AssetSummary> assets;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final String storageKey;
+  final FocusNode? primaryContentFocusNode;
+  final VoidCallback onLoadMore;
+  final VoidCallback onOpenSidebar;
+  final VoidCallback? onMoveLeftFromGrid;
+  final String? headingTitle;
+  final String? headingSubtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _groupTimelineAssets(assets);
+    final hasHeading =
+        (headingTitle != null && headingTitle!.isNotEmpty) ||
+        (headingSubtitle != null && headingSubtitle!.isNotEmpty);
+    final headingCount = hasHeading ? 1 : 0;
+
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (!hasMore || isLoadingMore) {
+          return false;
+        }
+
+        final metrics = notification.metrics;
+        if (metrics.pixels >= metrics.maxScrollExtent - 600) {
+          onLoadMore();
+        }
+
+        return false;
+      },
+      child: ListView.builder(
+        key: PageStorageKey<String>(storageKey),
+        cacheExtent: 480,
+        itemCount:
+            headingCount + groups.length + (hasMore || isLoadingMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (hasHeading && index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+              child: _AssetSectionHeading(
+                title: headingTitle,
+                subtitle: headingSubtitle,
+              ),
+            );
+          }
+
+          final groupIndex = index - headingCount;
+          if (groupIndex >= groups.length) {
+            return Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.md),
+              child: SizedBox(
+                height: 180,
+                child: _LoadMoreTile(
+                  isLoading: isLoadingMore,
+                  hasMore: hasMore,
+                ),
+              ),
+            );
+          }
+
+          final group = groups[groupIndex];
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: groupIndex == groups.length - 1 ? 0 : AppSpacing.xl,
+            ),
+            child: _DayAssetSection(
+              session: session,
+              group: group,
+              allAssets: assets,
+              primaryContentFocusNode: primaryContentFocusNode,
+              onOpenSidebar: onOpenSidebar,
+              onMoveLeftFromGrid: onMoveLeftFromGrid,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AssetSectionHeading extends StatelessWidget {
+  const _AssetSectionHeading({this.title, this.subtitle});
+
+  final String? title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scale = AppScale.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (title != null && title!.isNotEmpty)
+          Text(
+            title!,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              fontSize: scale.text(22, min: 18, max: 22),
+            ),
+          ),
+        if (subtitle != null && subtitle!.isNotEmpty) ...[
+          SizedBox(height: scale.space(AppSpacing.xs, min: 8, max: 8)),
+          Text(
+            subtitle!,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: scale.text(13, min: 11, max: 13),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _AssetTile extends StatefulWidget {
+  const _AssetTile({
+    required this.session,
+    required this.asset,
+    required this.autofocus,
+    this.focusNode,
+    this.onMoveLeft,
+    this.openDrawerOnLeft = false,
+    this.onOpenDrawer,
+    required this.prefetchUrls,
+    required this.onPressed,
+  });
+
+  final AuthenticatedSession session;
+  final AssetSummary asset;
+  final bool autofocus;
+  final FocusNode? focusNode;
+  final VoidCallback? onMoveLeft;
+  final bool openDrawerOnLeft;
+  final VoidCallback? onOpenDrawer;
+  final List<List<String>> prefetchUrls;
+  final VoidCallback onPressed;
+
+  @override
+  State<_AssetTile> createState() => _AssetTileState();
+}
+
+class _AssetTileState extends State<_AssetTile> {
+  String? _lastPrefetchKey;
+
+  @override
+  void didUpdateWidget(covariant _AssetTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.asset.id != widget.asset.id) {
+      _lastPrefetchKey = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = AppScale.of(context);
+    final tile = TvFocusable(
+      focusNode: widget.focusNode,
+      autofocus: widget.autofocus,
+      onPressed: widget.onPressed,
+      onFocusChange: (isFocused) {
+        if (isFocused) {
+          _prefetchNearbyThumbnails();
+        }
+      },
+      builder: (context, focusState) {
+        final isActive = focusState.isActive;
+
+        return AnimatedScale(
+          duration: const Duration(milliseconds: 180),
+          scale: isActive ? 0.985 : 1,
+          child: Semantics(
+            label: 'Asset ${widget.asset.id}',
+            button: true,
+            child: RepaintBoundary(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  AuthenticatedAssetImage(
+                    imageUrls: widget.asset.thumbnailUrls,
+                    accessToken: widget.session.accessToken,
+                    authMethod: widget.session.authMethod,
+                    requiresAuth: widget.asset.requiresAuth,
+                    heroTag: 'asset-${widget.asset.id}',
+                    placeholderIcon: widget.asset.isVideo
+                        ? Icons.smart_display_outlined
+                        : Icons.photo_outlined,
+                    filterQuality: FilterQuality.none,
+                  ),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: focusState.isFocused
+                            ? AppColors.focus
+                            : Colors.transparent,
+                        width: scale.sizeOf(
+                          AppFocusDecoration.focusedBorderWidth,
+                          min: 2,
+                          max: AppFocusDecoration.focusedBorderWidth,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(
+                              alpha: isActive ? 0.68 : 0.54,
+                            ),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (widget.asset.isVideo)
+                    const Positioned.fill(
+                      child: IgnorePointer(child: Center(child: _VideoBadge())),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    final hasLeftEdgeAction =
+        widget.onMoveLeft != null ||
+        (widget.openDrawerOnLeft && widget.onOpenDrawer != null);
+    if (!hasLeftEdgeAction) {
+      return tile;
+    }
+
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.arrowLeft): _OpenDrawerIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _OpenDrawerIntent: CallbackAction<_OpenDrawerIntent>(
+            onInvoke: (_) {
+              if (widget.onMoveLeft != null) {
+                widget.onMoveLeft?.call();
+                return null;
+              }
+              widget.onOpenDrawer?.call();
+              return null;
+            },
+          ),
+        },
+        child: tile,
+      ),
+    );
+  }
+
+  void _prefetchNearbyThumbnails() {
+    if (widget.prefetchUrls.isEmpty) {
+      return;
+    }
+
+    final prefetchKey = widget.prefetchUrls
+        .map((urls) => urls.isNotEmpty ? urls.first : '')
+        .join('|');
+    if (_lastPrefetchKey == prefetchKey) {
+      return;
+    }
+
+    _lastPrefetchKey = prefetchKey;
+    context.read<AssetImageRepository>().prefetchImages(
+      urls: widget.prefetchUrls,
+      accessToken: widget.session.accessToken,
+      authMethod: widget.session.authMethod,
+    );
+  }
+}
+
+class _VideoBadge extends StatelessWidget {
+  const _VideoBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = AppScale.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.48),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(scale.space(AppSpacing.md, min: 12, max: 16)),
+        child: Icon(
+          Icons.play_arrow_rounded,
+          color: Colors.white,
+          size: scale.sizeOf(32, min: 26, max: 32),
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadMoreTile extends StatelessWidget {
+  const _LoadMoreTile({required this.isLoading, required this.hasMore});
+
+  final bool isLoading;
+  final bool hasMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scale = AppScale.of(context);
+    return Container(
+      color: const Color(0xFF0D1A21),
+      padding: EdgeInsets.all(scale.space(AppSpacing.md, min: 14, max: 16)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (isLoading)
+            SizedBox(
+              width: scale.sizeOf(24, min: 22, max: 24),
+              height: scale.sizeOf(24, min: 22, max: 24),
+              child: const CircularProgressIndicator(strokeWidth: 2.4),
+            )
+          else
+            Icon(
+              Icons.more_horiz_rounded,
+              color: AppColors.textMuted,
+              size: scale.sizeOf(28, min: 24, max: 28),
+            ),
+          SizedBox(height: scale.space(AppSpacing.sm, min: 10, max: 12)),
+          Text(
+            isLoading ? 'Loading more photos' : 'More photos ahead',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: scale.text(16, min: 14, max: 16),
+            ),
+          ),
+          SizedBox(height: scale.space(4, min: 4, max: 4)),
+          Text(
+            hasMore ? 'Keep scrolling' : 'End of section',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted,
+              fontSize: scale.text(12, min: 11, max: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
