@@ -1,0 +1,280 @@
+name: Build Release APK
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-release-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-release-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Read app version
+        id: version
+        shell: bash
+        run: |
+          version_line="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          version_name="${version_line%%+*}"
+          build_number="${version_line##*+}"
+          build_version="${version_name}+${build_number}"
+          apk_name="ImmichTV.v${version_name}-${build_number}.apk"
+
+          echo "build_version=${build_version}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${build_number}" >> "$GITHUB_OUTPUT"
+          echo "apk_name=${apk_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect release strategy
+        id: release_strategy
+        shell: bash
+        run: |
+          ref_type="${GITHUB_REF_TYPE}"
+          ref_name="${GITHUB_REF_NAME}"
+          version_name="${{ steps.version.outputs.version_name }}"
+          build_version="${{ steps.version.outputs.build_version }}"
+          version_tag="v${version_name}"
+          previous_version=""
+          version_changed="false"
+
+          if [[ "$ref_type" != "tag" ]] && git rev-parse HEAD^ >/dev/null 2>&1; then
+            previous_version="$(
+              git show HEAD^:pubspec.yaml 2>/dev/null | grep '^version:' | awk '{print $2}' || true
+            )"
+            if [[ -n "$previous_version" && "$previous_version" != "$build_version" ]]; then
+              version_changed="true"
+            fi
+          fi
+
+          echo "previous_version=${previous_version}" >> "$GITHUB_OUTPUT"
+          echo "version_changed=${version_changed}" >> "$GITHUB_OUTPUT"
+          echo "version_tag=${version_tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          ref_type="${GITHUB_REF_TYPE}"
+          ref_name="${GITHUB_REF_NAME}"
+          version_tag="${{ steps.release_strategy.outputs.version_tag }}"
+          version_changed="${{ steps.release_strategy.outputs.version_changed }}"
+
+          if [[ "$ref_type" == "tag" ]]; then
+            release_channel="versioned"
+            release_tag="$ref_name"
+            release_name="Immich TV ${ref_name}"
+            prerelease="false"
+            if [[ "$ref_name" == *"-"* ]]; then
+              prerelease="true"
+            fi
+          elif [[ "$ref_name" == "master" && "$version_changed" == "true" ]]; then
+            release_channel="versioned"
+            release_tag="$version_tag"
+            release_name="Immich TV ${version_tag}"
+            prerelease="false"
+            if [[ "$version_tag" == *"-"* ]]; then
+              prerelease="true"
+            fi
+          else
+            release_channel="latest"
+            release_tag="master-latest"
+            release_name="Immich TV Latest Master Build"
+            prerelease="true"
+          fi
+
+          release_slug="$(printf '%s' "$release_tag" | tr '/ ' '--')"
+          metadata_name="release-metadata-${release_slug}.txt"
+          notes_name="release-notes-${release_slug}.md"
+
+          echo "release_channel=${release_channel}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
+          echo "release_name=${release_name}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+          echo "metadata_name=${metadata_name}" >> "$GITHUB_OUTPUT"
+          echo "notes_name=${notes_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate version tag matches pubspec
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          expected_tag="v${{ steps.version.outputs.version_name }}"
+          if [[ "${GITHUB_REF_NAME}" != "$expected_tag" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match pubspec version ${expected_tag}" >&2
+            exit 1
+          fi
+
+      - name: Create version tag for master release
+        if: github.ref_type != 'tag' && steps.release_meta.outputs.release_channel == 'versioned'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          release_tag="${{ steps.release_meta.outputs.release_tag }}"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${release_tag}" >/dev/null 2>&1; then
+            echo "Tag ${release_tag} already exists on origin"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${release_tag}" -m "Release ${release_tag}"
+          git push origin "refs/tags/${release_tag}"
+
+      - name: Build release APK
+        run: >
+          flutter build apk --release
+          --build-name "${{ steps.version.outputs.version_name }}"
+          --build-number "${{ steps.version.outputs.build_number }}"
+
+      - name: Rename APK
+        shell: bash
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk \
+            "build/app/outputs/flutter-apk/${{ steps.version.outputs.apk_name }}"
+
+      - name: Generate checksum and metadata
+        id: asset_meta
+        shell: bash
+        run: |
+          apk_path="build/app/outputs/flutter-apk/${{ steps.version.outputs.apk_name }}"
+          apk_sha256="$(sha256sum "$apk_path" | awk '{print $1}')"
+          apk_size_bytes="$(stat -c%s "$apk_path")"
+          created_at_utc="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
+          metadata_path="build/app/outputs/flutter-apk/${{ steps.release_meta.outputs.metadata_name }}"
+          notes_path="build/app/outputs/flutter-apk/${{ steps.release_meta.outputs.notes_name }}"
+
+          {
+            echo "release_name=${{ steps.release_meta.outputs.release_name }}"
+            echo "release_tag=${{ steps.release_meta.outputs.release_tag }}"
+            echo "release_channel=${{ steps.release_meta.outputs.release_channel }}"
+            echo "version_name=${{ steps.version.outputs.version_name }}"
+            echo "build_number=${{ steps.version.outputs.build_number }}"
+            echo "build_version=${{ steps.version.outputs.build_version }}"
+            echo "apk_name=${{ steps.version.outputs.apk_name }}"
+            echo "apk_size_bytes=${apk_size_bytes}"
+            echo "apk_sha256=${apk_sha256}"
+            echo "commit_sha=${GITHUB_SHA}"
+            echo "ref_name=${GITHUB_REF_NAME}"
+            echo "workflow_run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "created_at_utc=${created_at_utc}"
+          } > "$metadata_path"
+
+          RELEASE_CHANNEL="${{ steps.release_meta.outputs.release_channel }}" \
+          RELEASE_NAME="${{ steps.release_meta.outputs.release_name }}" \
+          RELEASE_TAG="${{ steps.release_meta.outputs.release_tag }}" \
+          BUILD_VERSION="${{ steps.version.outputs.build_version }}" \
+          VERSION_NAME="${{ steps.version.outputs.version_name }}" \
+          BUILD_NUMBER="${{ steps.version.outputs.build_number }}" \
+          APK_NAME="${{ steps.version.outputs.apk_name }}" \
+          METADATA_NAME="${{ steps.release_meta.outputs.metadata_name }}" \
+          NOTES_NAME="${{ steps.release_meta.outputs.notes_name }}" \
+          APK_SHA256="${apk_sha256}" \
+          COMMIT_SHA="${GITHUB_SHA}" \
+          COMMIT_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}" \
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+          REF_NAME="${GITHUB_REF_NAME}" \
+          CREATED_AT_UTC="${created_at_utc}" \
+          bash .github/scripts/generate_release_notes.sh "$notes_path"
+
+          printf '%s  %s\n' "$apk_sha256" "${{ steps.version.outputs.apk_name }}" \
+            > "${apk_path}.sha256"
+
+          echo "apk_path=${apk_path}" >> "$GITHUB_OUTPUT"
+          echo "apk_sha256=${apk_sha256}" >> "$GITHUB_OUTPUT"
+          echo "metadata_path=${metadata_path}" >> "$GITHUB_OUTPUT"
+          echo "notes_path=${notes_path}" >> "$GITHUB_OUTPUT"
+
+      - name: Remove older rolling release assets
+        if: steps.release_meta.outputs.release_channel == 'latest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          release_json="$(gh api "repos/${{ github.repository }}/releases/tags/${{ steps.release_meta.outputs.release_tag }}" 2>/dev/null || true)"
+          if [ -z "$release_json" ]; then
+            exit 0
+          fi
+
+          while IFS= read -r asset_id; do
+            if [ -n "$asset_id" ]; then
+              gh api \
+                --method DELETE \
+                "repos/${{ github.repository }}/releases/assets/${asset_id}"
+            fi
+          done < <(
+            printf '%s' "$release_json" | jq -r '.assets[] | .id'
+          )
+
+      - name: Publish GitHub release assets
+        id: release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.release_meta.outputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ steps.release_meta.outputs.release_name }}
+          body_path: ${{ steps.asset_meta.outputs.notes_path }}
+          generate_release_notes: false
+          prerelease: ${{ steps.release_meta.outputs.prerelease }}
+          files: |
+            ${{ steps.asset_meta.outputs.apk_path }}
+            ${{ steps.asset_meta.outputs.apk_path }}.sha256
+            ${{ steps.asset_meta.outputs.metadata_path }}
+            ${{ steps.asset_meta.outputs.notes_path }}
+          fail_on_unmatched_files: true
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-bundle-${{ steps.release_meta.outputs.release_tag }}
+          path: |
+            ${{ steps.asset_meta.outputs.apk_path }}
+            ${{ steps.asset_meta.outputs.apk_path }}.sha256
+            ${{ steps.asset_meta.outputs.metadata_path }}
+            ${{ steps.asset_meta.outputs.notes_path }}
+          if-no-files-found: error
+
+      - name: Publish workflow summary
+        shell: bash
+        run: |
+          {
+            echo "## Release bundle"
+            echo
+            echo "- Release: ${{ steps.release_meta.outputs.release_name }}"
+            echo "- Tag: \`${{ steps.release_meta.outputs.release_tag }}\`"
+            echo "- Version: \`${{ steps.version.outputs.build_version }}\`"
+            echo "- APK: \`${{ steps.version.outputs.apk_name }}\`"
+            echo "- SHA256: \`${{ steps.asset_meta.outputs.apk_sha256 }}\`"
+            echo "- Release URL: ${{ steps.release.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
