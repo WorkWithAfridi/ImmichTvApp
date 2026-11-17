@@ -4,33 +4,9 @@
   <img src="assets/png/banner.png" alt="Immich TV banner" width="860">
 </p>
 
-<p align="center">
-  <img src="assets/png/playstore.png" alt="Immich TV Play Store icon" width="88">
-  &nbsp;&nbsp;
-  <img src="assets/png/appstore.png" alt="Immich TV App Store icon" width="88">
-</p>
-
 TV-first Immich client for browsing your self-hosted photo and video library from the couch.
 
-Immich TV is now a single Flutter codebase for both:
-
-- the public marketing site at `/`
-- the main web-app entry at `/app`
-- the native TV-first app experience across Android TV and the wider Flutter platform matrix
-
-It connects to your existing Immich server and gives you a living-room experience designed for Android TV and Google TV first, while keeping the browser-facing surfaces in the same project for future web expansion.
-
-## Website
-
-- https://immichtvapp.web.app/
-- Route split:
-  `/` = marketing site
-  `/app` = main Flutter app entry for web
-
-## Google Play
-
-- Play Store: https://play.google.com/store/apps/details?id=com.workwithafridi.immichtv
-- Public install milestone: `500+ downloads` on Google Play as of June 11, 2026
+It connects to your existing Immich server and gives you a living-room experience designed for Android TV and Google TV first, built as a Flutter app for the wider platform matrix.
 
 ## Status
 
@@ -41,7 +17,7 @@ Current product direction:
 - Android TV / Google TV first
 - Remote-first navigation and focus behavior
 - Read-only browsing and playback
-- Store-ready packaging and release polish
+- Android TV packaging and release polish
 - Better resilience for large libraries and degraded networks
 
 ## Features
@@ -85,7 +61,7 @@ Current product direction:
 
 - Flutter SDK
 - An accessible Immich server
-- A target device such as Android TV, Google TV, emulator, desktop, or web for development
+- A target device such as Android TV, Google TV, emulator, or desktop for development
 
 ### Run locally
 
@@ -94,31 +70,12 @@ flutter pub get
 flutter run
 ```
 
-### Run web surfaces locally
-
-```bash
-flutter run -d chrome
-```
-
-Open:
-
-- `http://localhost:xxxx/` for the Flutter marketing site
-- `http://localhost:xxxx/app` for the main Flutter app entry
-
 ### Quality checks
 
 ```bash
 flutter analyze
 flutter test
 ```
-
-### Build the combined web output
-
-```bash
-flutter build web
-```
-
-The deployable site is written to `build/web`.
 
 ## Demo Access
 
@@ -157,14 +114,6 @@ The repository includes packaged brand assets under `assets/png/`.
 
 - `banner.png`
 - `tv-banner-icon.png`
-- `playstore.png`
-- `appstore.png`
-
-## Web architecture
-
-- One Flutter frontend now owns both the public landing page and the future browser app path.
-- The old standalone `marketing-site/` codebase has been removed.
-- The web build outputs to `build/web` and can be served from a static hosting provider.
 
 ## Roadmap
 
@@ -172,7 +121,7 @@ The repository includes packaged brand assets under `assets/png/`.
 - Improve retry and degraded-network behavior
 - Expand remote-navigation and integration test coverage
 - Finish Android TV packaging and broader platform validation
-- Continue polishing releases, metadata, and store presentation
+- Continue polishing releases and documentation
 
 ## Contributing
 
