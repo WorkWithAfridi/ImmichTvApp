@@ -12,7 +12,6 @@ import '../../core/models/authenticated_session.dart';
 import '../../core/models/person_summary.dart';
 import '../../core/repositories/asset_image_repository.dart';
 import '../../core/repositories/media_repository.dart';
-import '../../core/services/review_prompt_service.dart';
 import '../../shared/presentation/app_breakpoints.dart';
 import '../../shared/presentation/app_colors.dart';
 import '../../shared/presentation/app_durations.dart';
@@ -26,7 +25,6 @@ import '../../shared/presentation/widgets/tv_focusable.dart';
 import '../app_flow/cubit/app_flow_cubit.dart';
 import '../library/cubit/library_cubit.dart';
 import '../library/cubit/library_state.dart';
-import '../review_prompt/review_prompt_dialog.dart';
 import '../viewer/asset_viewer_screen.dart';
 
 part 'home_sections.part.dart';
@@ -51,7 +49,6 @@ class _HomeScreenState extends State<HomeScreen> {
   late final FocusNode _peopleContentFocusNode;
   late final FocusNode _favoritesContentFocusNode;
   bool _isSidebarOpen = false;
-  bool _hasHandledReviewPrompt = false;
 
   @override
   void initState() {
@@ -152,87 +149,66 @@ class _HomeScreenState extends State<HomeScreen> {
     return true;
   }
 
-  Future<void> _maybeShowReviewPrompt() async {
-    if (_hasHandledReviewPrompt || !mounted) {
-      return;
-    }
-    _hasHandledReviewPrompt = true;
-
-    await maybeShowReviewPromptDialog(
-      context,
-      reviewPromptService: context.read<ReviewPromptService>(),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) =>
           LibraryCubit(context.read<MediaRepository>(), widget.session)
             ..loadInitial(),
-      child: BlocListener<LibraryCubit, LibraryState>(
-        listenWhen: (previous, current) =>
-            previous.status != LibraryLoadStatus.success &&
-            current.status == LibraryLoadStatus.success,
-        listener: (context, state) => _maybeShowReviewPrompt(),
-        child: Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: BlocBuilder<LibraryCubit, LibraryState>(
-              builder: (context, state) {
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final scale = AppScale.of(context);
-                    final sidebarWidth = _responsiveSidebarWidth(
-                      constraints.maxWidth,
-                      scale,
-                    );
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: BlocBuilder<LibraryCubit, LibraryState>(
+            builder: (context, state) {
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final scale = AppScale.of(context);
+                  final sidebarWidth = _responsiveSidebarWidth(
+                    constraints.maxWidth,
+                    scale,
+                  );
 
-                    return Stack(
-                      children: [
-                        Positioned.fill(
-                          child: _ContentPane(
-                            session: widget.session,
-                            state: state,
-                            isSidebarOpen: _isSidebarOpen,
-                            menuToggleFocusNode: _menuToggleFocusNode,
-                            timelineContentFocusNode: _timelineContentFocusNode,
-                            albumsContentFocusNode: _albumsContentFocusNode,
-                            peopleContentFocusNode: _peopleContentFocusNode,
-                            favoritesContentFocusNode:
-                                _favoritesContentFocusNode,
-                            onToggleSidebar: _toggleSidebar,
-                            onOpenSidebarForTab: _openSidebarForTab,
-                          ),
+                  return Stack(
+                    children: [
+                      Positioned.fill(
+                        child: _ContentPane(
+                          session: widget.session,
+                          state: state,
+                          isSidebarOpen: _isSidebarOpen,
+                          menuToggleFocusNode: _menuToggleFocusNode,
+                          timelineContentFocusNode: _timelineContentFocusNode,
+                          albumsContentFocusNode: _albumsContentFocusNode,
+                          peopleContentFocusNode: _peopleContentFocusNode,
+                          favoritesContentFocusNode: _favoritesContentFocusNode,
+                          onToggleSidebar: _toggleSidebar,
+                          onOpenSidebarForTab: _openSidebarForTab,
                         ),
-                        Positioned(
-                          top: 0,
-                          bottom: 0,
-                          left: 0,
-                          child: ClipRect(
-                            child: AnimatedAlign(
-                              duration: const Duration(milliseconds: 220),
-                              curve: Curves.easeOutCubic,
-                              alignment: Alignment.centerLeft,
-                              widthFactor: _isSidebarOpen ? 1 : 0,
-                              child: ExcludeFocus(
-                                excluding: !_isSidebarOpen,
-                                child: IgnorePointer(
-                                  ignoring: !_isSidebarOpen,
-                                  child: SizedBox(
-                                    width: sidebarWidth,
-                                    child: AnimatedOpacity(
-                                      duration: const Duration(
-                                        milliseconds: 160,
-                                      ),
-                                      opacity: _isSidebarOpen ? 1 : 0,
-                                      child: _Sidebar(
-                                        session: widget.session,
-                                        state: state,
-                                        width: sidebarWidth,
-                                        focusNodes: _drawerFocusNodes,
-                                        onCloseSidebar: _closeSidebar,
-                                      ),
+                      ),
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        left: 0,
+                        child: ClipRect(
+                          child: AnimatedAlign(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            alignment: Alignment.centerLeft,
+                            widthFactor: _isSidebarOpen ? 1 : 0,
+                            child: ExcludeFocus(
+                              excluding: !_isSidebarOpen,
+                              child: IgnorePointer(
+                                ignoring: !_isSidebarOpen,
+                                child: SizedBox(
+                                  width: sidebarWidth,
+                                  child: AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 160),
+                                    opacity: _isSidebarOpen ? 1 : 0,
+                                    child: _Sidebar(
+                                      session: widget.session,
+                                      state: state,
+                                      width: sidebarWidth,
+                                      focusNodes: _drawerFocusNodes,
+                                      onCloseSidebar: _closeSidebar,
                                     ),
                                   ),
                                 ),
@@ -240,12 +216,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ),
       ),

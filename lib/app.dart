@@ -10,7 +10,6 @@ import 'src/core/repositories/asset_image_repository.dart';
 import 'src/core/repositories/auth_repository.dart';
 import 'src/core/repositories/media_repository.dart';
 import 'src/core/repositories/server_repository.dart';
-import 'src/core/services/review_prompt_service.dart';
 import 'src/core/services/server_url_normalizer.dart';
 import 'src/features/app_flow/cubit/app_flow_cubit.dart';
 import 'src/features/auth/data/immich_auth_repository.dart';
@@ -22,7 +21,6 @@ import 'src/features/mock/data/mock_media_repository.dart';
 import 'src/features/mock/data/mock_server_repository.dart';
 import 'src/features/onboarding/data/immich_server_repository.dart';
 import 'src/platform/browser_navigation.dart';
-import 'src/platform/review_prompt/shared_preferences_review_prompt_service.dart';
 import 'src/platform/storage/platform_profile_storage.dart';
 import 'src/shared/presentation/app_colors.dart';
 import 'src/shared/presentation/app_radii.dart';
@@ -38,7 +36,6 @@ class ImmichTvApp extends StatelessWidget {
     AssetImageRepository? assetImageRepository,
     ServerRepository? serverRepository,
     MediaRepository? mediaRepository,
-    ReviewPromptService? reviewPromptService,
     bool? useMockServices,
   }) : _environment = AppEnvironment(useMockServices: useMockServices ?? false),
        _authRepository =
@@ -63,16 +60,13 @@ class ImmichTvApp extends StatelessWidget {
            mediaRepository ??
            ((useMockServices ?? false)
                ? MockMediaRepository()
-               : ImmichMediaRepository(dio: ImmichDioFactory.create())),
-       _reviewPromptService =
-           reviewPromptService ?? SharedPreferencesReviewPromptService();
+               : ImmichMediaRepository(dio: ImmichDioFactory.create()));
 
   final AppEnvironment _environment;
   late final AuthRepository _authRepository;
   late final AssetImageRepository _assetImageRepository;
   late final ServerRepository _serverRepository;
   late final MediaRepository _mediaRepository;
-  late final ReviewPromptService _reviewPromptService;
 
   @override
   Widget build(BuildContext context) {
@@ -84,9 +78,6 @@ class ImmichTvApp extends StatelessWidget {
       ),
       RepositoryProvider<ServerRepository>.value(value: _serverRepository),
       RepositoryProvider<MediaRepository>.value(value: _mediaRepository),
-      RepositoryProvider<ReviewPromptService>.value(
-        value: _reviewPromptService,
-      ),
     ];
 
     if (_shouldShowMarketingLanding) {
@@ -314,10 +305,7 @@ class _AdaptiveViewportGateState extends State<_AdaptiveViewportGate> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => AppFlowCubit(
-        widget.authRepository,
-        reviewPromptService: context.read<ReviewPromptService>(),
-      )..initialize(),
+      create: (_) => AppFlowCubit(widget.authRepository)..initialize(),
       child: const AppShell(),
     );
   }

@@ -18,7 +18,6 @@ import 'package:immichtv/src/core/repositories/auth_repository.dart';
 import 'package:immichtv/src/core/repositories/asset_image_repository.dart';
 import 'package:immichtv/src/core/repositories/media_repository.dart';
 import 'package:immichtv/src/core/repositories/server_repository.dart';
-import 'package:immichtv/src/core/services/review_prompt_service.dart';
 import 'package:immichtv/src/features/onboarding/widgets/onboarding_input_method.dart';
 import 'package:immichtv/src/shared/presentation/widgets/authenticated_asset_image.dart';
 import 'package:immichtv/src/shared/presentation/widgets/on_screen_keyboard/on_screen_keyboard.dart';
@@ -37,7 +36,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
 
@@ -66,7 +64,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
 
@@ -90,7 +87,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -138,7 +134,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -179,7 +174,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -218,7 +212,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -283,7 +276,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -320,7 +312,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -358,7 +349,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -396,7 +386,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -428,7 +417,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -487,7 +475,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -534,7 +521,6 @@ void main() {
           assetImageRepository: FakeAssetImageRepository(),
           serverRepository: FakeServerRepository(),
           mediaRepository: FakeMediaRepository(),
-          reviewPromptService: FakeReviewPromptService(),
         ),
       );
       await _settleAppFlow(tester);
@@ -575,7 +561,6 @@ void main() {
         assetImageRepository: FakeAssetImageRepository(),
         serverRepository: FakeServerRepository(),
         mediaRepository: FakeMediaRepository(),
-        reviewPromptService: FakeReviewPromptService(),
       ),
     );
     await _settleAppFlow(tester);
@@ -632,7 +617,6 @@ void main() {
           assetImageRepository: FakeAssetImageRepository(),
           serverRepository: FakeServerRepository(),
           mediaRepository: FakeMediaRepository(),
-          reviewPromptService: FakeReviewPromptService(),
         ),
       );
       await _settleAppFlow(tester);
@@ -939,7 +923,6 @@ Future<void> _pumpSignedInApp(
       assetImageRepository: FakeAssetImageRepository(),
       serverRepository: FakeServerRepository(),
       mediaRepository: mediaRepository,
-      reviewPromptService: FakeReviewPromptService(),
     ),
   );
   await _settleAppFlow(tester);
@@ -1049,30 +1032,6 @@ class FakeServerRepository implements ServerRepository {
       pingPath: 'server/ping',
     );
   }
-}
-
-class FakeReviewPromptService implements ReviewPromptService {
-  @override
-  Future<void> completePrompt() async {}
-
-  @override
-  Future<void> deferPrompt() async {}
-
-  @override
-  Future<ReviewPromptStatus> getStatus() async {
-    return const ReviewPromptStatus(
-      loginCount: 0,
-      bootCount: 0,
-      hasCompleted: false,
-      shouldPrompt: false,
-    );
-  }
-
-  @override
-  Future<void> registerAppBoot() async {}
-
-  @override
-  Future<void> registerSuccessfulLogin() async {}
 }
 
 class FakeMediaRepository implements MediaRepository {

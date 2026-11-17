@@ -4,7 +4,6 @@ import 'package:immichtv/src/core/models/saved_profile.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
 import 'package:immichtv/src/core/models/user_profile.dart';
 import 'package:immichtv/src/core/repositories/auth_repository.dart';
-import 'package:immichtv/src/core/services/review_prompt_service.dart';
 import 'package:immichtv/src/features/app_flow/cubit/app_flow_cubit.dart';
 import 'package:immichtv/src/features/app_flow/cubit/app_flow_state.dart';
 
@@ -23,10 +22,7 @@ void main() {
         name: 'Guest',
       );
       final repository = _FakeAuthRepository(savedProfiles: [primaryProfile]);
-      final cubit = AppFlowCubit(
-        repository,
-        reviewPromptService: _FakeReviewPromptService(),
-      );
+      final cubit = AppFlowCubit(repository);
       addTearDown(cubit.close);
 
       await cubit.initialize();
@@ -44,30 +40,6 @@ void main() {
       expect(cubit.state.profiles, [primaryProfile, addedProfile]);
     },
   );
-}
-
-class _FakeReviewPromptService implements ReviewPromptService {
-  @override
-  Future<void> completePrompt() async {}
-
-  @override
-  Future<void> deferPrompt() async {}
-
-  @override
-  Future<ReviewPromptStatus> getStatus() async {
-    return const ReviewPromptStatus(
-      loginCount: 0,
-      bootCount: 0,
-      hasCompleted: false,
-      shouldPrompt: false,
-    );
-  }
-
-  @override
-  Future<void> registerAppBoot() async {}
-
-  @override
-  Future<void> registerSuccessfulLogin() async {}
 }
 
 class _FakeAuthRepository implements AuthRepository {
