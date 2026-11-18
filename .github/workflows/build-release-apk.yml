@@ -110,7 +110,9 @@ jobs:
             release_channel="latest"
             release_tag="master-latest"
             release_name="Immich TV Latest Master Build"
-            prerelease="true"
+            # Keep the rolling build non-prerelease so GitHub shows it as
+            # "Latest" in the repository sidebar instead of a tag count.
+            prerelease="false"
           fi
 
           release_slug="$(printf '%s' "$release_tag" | tr '/ ' '--')"
