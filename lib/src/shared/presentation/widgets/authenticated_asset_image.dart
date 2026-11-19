@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import '../../../core/models/immich_auth_method.dart';
 import '../../../core/network/immich_dio_factory.dart';
 import '../../../core/network/immich_headers.dart';
+import '../../../core/network/image_retry_policy.dart';
 import '../app_colors.dart';
 import '../app_spacing.dart';
 import 'loading_skeleton.dart';
@@ -28,6 +29,7 @@ class AuthenticatedAssetImage extends StatefulWidget {
     this.loadingOverlay,
     this.fadeInDuration = const Duration(milliseconds: 320),
     this.retainPreviousImageWhileLoading = false,
+    this.retryPolicy = const ImageRetryPolicy(),
   });
 
   final List<String> imageUrls;
@@ -45,6 +47,7 @@ class AuthenticatedAssetImage extends StatefulWidget {
   final Widget? loadingOverlay;
   final Duration fadeInDuration;
   final bool retainPreviousImageWhileLoading;
+  final ImageRetryPolicy retryPolicy;
 
   @override
   State<AuthenticatedAssetImage> createState() =>
@@ -55,6 +58,7 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
   static final Dio _webImageDio = ImmichDioFactory.create();
 
   int _urlIndex = 0;
+  int _retryCount = 0;
   bool _isAdvancingUrl = false;
   String? _webImageUrl;
   Future<Uint8List>? _webImageFuture;
@@ -130,6 +134,7 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
           _buildAnimatedImageStack(
             image: Image.network(
               currentUrl,
+              key: ValueKey<String>('image-$currentUrl-r$_retryCount'),
               headers: widget.requiresAuth
                   ? ImmichHeaders.mediaHeaders(
                       token: widget.accessToken,
@@ -147,7 +152,7 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
                 return child;
               },
               errorBuilder: (context, error, stackTrace) {
-                _handleImageError();
+                _handleImageError(error);
                 return _ImagePlaceholder(
                   child: Icon(
                     widget.placeholderIcon,
@@ -221,7 +226,7 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
                 return child;
               },
               errorBuilder: (context, error, stackTrace) {
-                _handleImageError();
+                _handleImageError(error);
                 return _ImagePlaceholder(
                   child: Icon(
                     widget.placeholderIcon,
@@ -244,6 +249,7 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
 
   void _resetImageState({bool preserveVisibleFrame = false}) {
     _urlIndex = 0;
+    _retryCount = 0;
     _isAdvancingUrl = false;
     _webImageUrl = null;
     _webImageFuture = null;
@@ -258,6 +264,8 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
     if (_isAdvancingUrl || _urlIndex >= widget.imageUrls.length - 1) {
       return;
     }
+
+    _retryCount = 0;
 
     _isAdvancingUrl = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -282,7 +290,20 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
     });
   }
 
-  void _handleImageError() {
+  void _handleImageError(Object error) {
+    if (widget.retryPolicy.shouldRetry(_retryCount, error)) {
+      final attempt = _retryCount;
+      _retryCount += 1;
+      Future<void>.delayed(widget.retryPolicy.delayFor(attempt)).then((_) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {});
+      });
+      return;
+    }
+
+    _retryCount = 0;
     if (_urlIndex >= widget.imageUrls.length - 1) {
       if (!mounted) {
         return;
@@ -439,23 +460,32 @@ class _AuthenticatedAssetImageState extends State<AuthenticatedAssetImage> {
   }
 
   Future<Uint8List> _fetchWebImageBytes(String url) async {
-    final response = await _webImageDio.get<List<int>>(
-      url,
-      options: Options(
-        headers: widget.requiresAuth
-            ? ImmichHeaders.mediaHeaders(
-                token: widget.accessToken,
-                authMethod: widget.authMethod,
-              )
-            : null,
-        responseType: ResponseType.bytes,
-      ),
-    );
-    final data = response.data;
-    if (data == null || data.isEmpty) {
-      throw const FormatException('No image bytes returned.');
+    for (var attempt = 0;; attempt++) {
+      try {
+        final response = await _webImageDio.get<List<int>>(
+          url,
+          options: Options(
+            headers: widget.requiresAuth
+                ? ImmichHeaders.mediaHeaders(
+                    token: widget.accessToken,
+                    authMethod: widget.authMethod,
+                  )
+                : null,
+            responseType: ResponseType.bytes,
+          ),
+        );
+        final data = response.data;
+        if (data == null || data.isEmpty) {
+          throw const FormatException('No image bytes returned.');
+        }
+        return Uint8List.fromList(data);
+      } catch (error) {
+        if (!widget.retryPolicy.shouldRetry(attempt, error)) {
+          rethrow;
+        }
+        await Future<void>.delayed(widget.retryPolicy.delayFor(attempt));
+      }
     }
-    return Uint8List.fromList(data);
   }
 
   Widget _wrapImage(Widget child) {
