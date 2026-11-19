@@ -41,10 +41,11 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Stable application ID: changing it would create a separate app on
+        // Android TV / Google TV devices and break saved-profile upgrades.
         applicationId = "com.workwithafridi.immichtv"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        // Keep the SDK floors driven by Flutter so TV and mobile builds stay
+        // aligned with the plugin set.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
