@@ -10,8 +10,8 @@ const _playStoreUrl =
     'https://play.google.com/store/apps/details?id=com.workwithafridi.immichtv';
 
 const _proofPoints = <_ProofPoint>[
-  _ProofPoint(value: '500+', label: 'Public installs on Google Play'),
-  _ProofPoint(value: '1.2.0', label: 'Current app release line'),
+  _ProofPoint(value: 'Open source', label: 'AGPL-licensed and self-host friendly'),
+  _ProofPoint(value: 'Read-only', label: 'Browsing and playback, never library writes'),
   _ProofPoint(
     value: 'TV-first',
     label: 'Built around Android TV and Google TV remotes',
@@ -38,10 +38,10 @@ const _features = <_MarketingFeature>[
         'Immich TV focuses on browsing and playback so household TVs stay simple, predictable, and low-risk.',
   ),
   _MarketingFeature(
-    icon: Icons.smartphone_rounded,
-    title: 'Phone-assisted text entry',
+    icon: Icons.auto_awesome_outlined,
+    title: 'Adapts to your server',
     body:
-        'Scan a QR code during setup and use your phone for server URLs, email addresses, passwords, and API keys.',
+        'Immich TV detects the server version and enabled features, using newer APIs only when they are actually available.',
   ),
 ];
 
@@ -89,7 +89,7 @@ const _flowSteps = <_FlowStep>[
     step: '03',
     title: 'Browse from the couch',
     body:
-        'Move between Timeline, Albums, People, Favorites, fullscreen viewing, and slideshow playback with a remote.',
+        'Move between Timeline, Albums, People, Favorites, Memories, fullscreen viewing, and slideshow playback with a remote.',
   ),
 ];
 
@@ -108,9 +108,9 @@ const _platformItems = <_ExperienceItem>[
   ),
   _ExperienceItem(
     icon: Icons.speed_rounded,
-    title: 'Performance remains a priority',
+    title: 'Steady on imperfect networks',
     body:
-        'Thumbnail caching and prefetching have been tuned, with real-TV smoothness and degraded-network behavior next on the roadmap.',
+        'Read requests retry transient failures, and already-loaded media stays browsable with a retry action when a refresh fails.',
   ),
   _ExperienceItem(
     icon: Icons.devices_rounded,
@@ -137,9 +137,9 @@ const _faqItems = <_FaqItem>[
         'Yes. The Android TV app is published on Google Play, and APK releases are also available from GitHub for manual installation.',
   ),
   _FaqItem(
-    question: 'Why does the site mention typing on my phone?',
+    question: 'Will this work with older Immich servers?',
     answer:
-        'Long text entry is painful with a TV remote. Immich TV can show a QR code so a phone can type into the currently focused TV field during setup.',
+        'Yes. Immich TV checks the server version and enabled features at sign-in and only calls newer APIs when they are supported, falling back to conservative behavior otherwise.',
   ),
   _FaqItem(
     question: 'Is this an official Immich app?',
@@ -1360,10 +1360,10 @@ class _HeroHighlightCard extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: const [
             _HeroHighlightItem(
-              icon: Icons.phone_iphone_rounded,
-              title: 'No remote-keyboard struggle',
+              icon: Icons.keyboard_rounded,
+              title: 'On-screen keyboard included',
               body:
-                  'Scan a setup QR code and type server details or credentials from your phone.',
+                  'Finish setup using only the remote, or switch to a physical keyboard when one is available.',
             ),
             _HeroHighlightItem(
               icon: Icons.dvr_rounded,

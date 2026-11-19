@@ -48,7 +48,7 @@ Current product direction:
 
 On sign-in, Immich TV probes `/server/version`, `/server/media-types`, and `/config` to learn which Immich version is running and which features the administrator has enabled. Newer APIs are used only when the server supports them; if discovery fails, the app falls back to the conservative feature set that works on older servers. Read requests use bounded retries for transient network failures, and the library keeps cached content available with an on-screen retry action when a refresh fails.
 
-Memories use `GET /memories` when the server supports it. Adaptive HLS video is enabled only on Immich v3+ native players; if the playlist cannot be opened, playback automatically falls back to the existing transcoded and original sources. Browsers keep using the direct/transcoded sources because native HLS support varies by browser.
+Memories use `GET /memories` when the server supports it. Adaptive HLS video is an opt-in setting under Settings → Playback because it is still an Alpha Immich API. It is used only on Immich v3+ native players; if the playlist cannot be opened, playback automatically falls back to the existing transcoded and original sources. Streaming sessions are released when playback stops. Browsers keep using the direct/transcoded sources because native HLS support varies by browser.
 
 ## Tech Stack
 
@@ -127,8 +127,8 @@ The repository includes packaged brand assets under `assets/png/`.
 ## Roadmap
 
 - Measure and tune scroll smoothness on real TV hardware
-- Extend retry and fallback behavior to image loads
-- Release HLS streaming sessions explicitly and add browser-side HLS support
+- Add browser-side HLS support for platforms without native playback
+- Profile thumbnail rebuilds on real TV hardware
 - Expand remote-navigation and integration test coverage
 - Finish Android TV packaging and broader platform validation
 - Continue polishing releases and documentation

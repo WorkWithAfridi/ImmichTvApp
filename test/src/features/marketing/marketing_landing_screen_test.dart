@@ -38,11 +38,11 @@ void main() {
     expect(openedWebApp, isTrue);
 
     await tester.scrollUntilVisible(
-      find.text('500+'),
+      find.text('Open source'),
       700,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('500+'), findsOneWidget);
+    expect(find.text('Open source'), findsOneWidget);
   });
 
   testWidgets('renders on a phone-sized viewport', (tester) async {

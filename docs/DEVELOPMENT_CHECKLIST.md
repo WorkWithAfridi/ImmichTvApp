@@ -67,11 +67,11 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [x] Add retry behavior and offline-friendly handling for intermittent networks.
 - [x] Detect server version and enabled Immich features, and gate unsupported APIs.
 - [ ] Profile rebuild frequency in key BLoCs and widget trees.
-- [ ] Add integration tests for boot, login, browse, and sign-out flows.
+- [x] Add integration tests for boot, login, browse, and sign-out flows.
 
 ## Phase 7: Platform Packaging and Release Readiness
 
-- [ ] Configure Android TV launcher metadata and store-ready packaging.
+- [x] Configure Android TV launcher metadata and store-ready packaging (see `docs/ANDROID_TV_PACKAGING.md`).
 - [ ] Review Android mobile ergonomics for optional handheld support.
 - [ ] Validate web deployment behavior for hosted TV browsers and desktop browsers.
 - [ ] Verify desktop builds on macOS, Windows, and Linux.
@@ -83,6 +83,8 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [ ] Measure image memory behavior and scroll smoothness on real TV-class hardware.
 - [ ] Refine thumbnail cache sizing and smarter prefetch windows for large libraries.
 - [x] Add retry and degraded-network handling for library browsing (offline banner + manual retry).
-- [ ] Extend retry/fallback handling to image playback failures.
-- [ ] Release HLS sessions explicitly and add browser-side HLS support.
-- [ ] Configure Android TV launcher metadata and packaging details.
+- [x] Extend retry/fallback handling to image playback failures.
+- [x] Release HLS sessions explicitly and add a Settings toggle for the Alpha streaming feature.
+- [ ] Add browser-side HLS support for platforms without native HLS playback.
+- [x] Document Android TV launcher metadata and packaging checks.
+- [ ] Run the TV device checklist in `docs/ANDROID_TV_PACKAGING.md` on real hardware.
