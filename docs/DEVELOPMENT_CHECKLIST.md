@@ -45,6 +45,7 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [x] Fetch and display the main timeline feed.
 - [x] Fetch and display albums.
 - [x] Fetch and display favorites.
+- [x] Fetch and display server-capable memories ("On this day" and birthdays).
 - [x] Add asset grid virtualization and pagination.
 - [x] Add thumbnail loading and caching.
 - [x] Build loading, empty, and error states for each tab.
@@ -54,6 +55,7 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 
 - [x] Build fullscreen image viewer.
 - [x] Build fullscreen video playback flow.
+- [x] Prefer adaptive HLS playback on supported servers with automatic source fallback.
 - [x] Add next/previous asset navigation with remote, keyboard, and pointer support.
 - [x] Add slideshow playback controls, duration settings, and pause/resume.
 - [x] Add screen-safe overlays for metadata and transport controls.
@@ -62,7 +64,8 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 
 - [ ] Measure initial load, scroll smoothness, and image memory behavior on TV hardware.
 - [x] Optimize thumbnail cache strategy and prefetching.
-- [ ] Add retry behavior and offline-friendly handling for intermittent networks.
+- [x] Add retry behavior and offline-friendly handling for intermittent networks.
+- [x] Detect server version and enabled Immich features, and gate unsupported APIs.
 - [ ] Profile rebuild frequency in key BLoCs and widget trees.
 - [ ] Add integration tests for boot, login, browse, and sign-out flows.
 
@@ -79,5 +82,7 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 
 - [ ] Measure image memory behavior and scroll smoothness on real TV-class hardware.
 - [ ] Refine thumbnail cache sizing and smarter prefetch windows for large libraries.
-- [ ] Add retry and degraded-network handling for image and media playback failures.
+- [x] Add retry and degraded-network handling for library browsing (offline banner + manual retry).
+- [ ] Extend retry/fallback handling to image playback failures.
+- [ ] Release HLS sessions explicitly and add browser-side HLS support.
 - [ ] Configure Android TV launcher metadata and packaging details.
