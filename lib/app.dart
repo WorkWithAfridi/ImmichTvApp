@@ -19,6 +19,7 @@ import 'src/features/marketing/marketing_landing_screen.dart';
 import 'src/features/mock/data/mock_auth_repository.dart';
 import 'src/features/mock/data/mock_media_repository.dart';
 import 'src/features/mock/data/mock_server_repository.dart';
+import 'src/features/onboarding/data/immich_server_capabilities_repository.dart';
 import 'src/features/onboarding/data/immich_server_repository.dart';
 import 'src/platform/browser_navigation.dart';
 import 'src/platform/storage/platform_profile_storage.dart';
@@ -45,6 +46,9 @@ class ImmichTvApp extends StatelessWidget {
                : ImmichAuthRepository(
                    dio: ImmichDioFactory.create(),
                    profileStorage: PlatformProfileStorage(),
+                   capabilitiesRepository: ImmichServerCapabilitiesRepository(
+                     dio: ImmichDioFactory.create(),
+                   ),
                  )),
        _serverRepository =
            serverRepository ??
@@ -315,12 +319,10 @@ class _MarketingSiteApp extends StatelessWidget {
   const _MarketingSiteApp({
     required this.repositories,
     required this.appHome,
-    this.homeOverride,
   });
 
   final List<RepositoryProvider> repositories;
   final Widget appHome;
-  final Widget? homeOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -339,7 +341,7 @@ class _MarketingSiteApp extends StatelessWidget {
           ),
           scaffoldBackgroundColor: AppColors.background,
         ),
-        home: homeOverride ?? _MarketingSiteGate(appHome: appHome),
+        home: _MarketingSiteGate(appHome: appHome),
       ),
     );
   }

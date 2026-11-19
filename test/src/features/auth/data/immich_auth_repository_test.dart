@@ -8,7 +8,9 @@ import 'package:immichtv/src/core/models/immich_auth_method.dart';
 import 'package:immichtv/src/core/models/user_profile.dart';
 import 'package:immichtv/src/core/models/saved_profile.dart';
 import 'package:immichtv/src/core/models/saved_profile_secret.dart';
+import 'package:immichtv/src/core/models/server_capabilities.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
+import 'package:immichtv/src/core/repositories/server_capabilities_repository.dart';
 import 'package:immichtv/src/platform/storage/profile_storage.dart';
 import 'package:immichtv/src/features/auth/data/immich_auth_repository.dart';
 
@@ -193,6 +195,47 @@ void main() {
     );
   });
 
+  test('sign-in attaches discovered server capabilities to the session', () async {
+    final capabilities = ServerCapabilities.fromProbe(
+      version: const {'major': 3, 'minor': 3, 'patch': 0},
+    );
+    final repository = ImmichAuthRepository(
+      dio: Dio()
+        ..httpClientAdapter = _RecordingHttpClientAdapter(
+          responses: {
+            'GET https://photos.example.com/api/users/me':
+                ResponseBody.fromString(
+                  jsonEncode({
+                    'id': 'api-user',
+                    'email': 'apikey@example.com',
+                    'name': 'API Living Room',
+                  }),
+                  200,
+                  headers: {
+                    Headers.contentTypeHeader: ['application/json'],
+                  },
+                ),
+          },
+        ),
+      profileStorage: _InMemoryProfileStorage(
+        profiles: const [],
+        secrets: const {},
+      ),
+      capabilitiesRepository: _FakeCapabilitiesRepository(capabilities),
+    );
+
+    final session = await repository.signInWithApiKey(
+      serverConfig: ServerConfig(
+        rawInput: 'https://photos.example.com',
+        serverUrl: Uri.parse('https://photos.example.com'),
+        apiUrl: Uri.parse('https://photos.example.com/api'),
+      ),
+      apiKey: 'key',
+    );
+
+    expect(session.capabilities, capabilities);
+  });
+
   test(
     'saved API key profiles re-authenticate through users/me only',
     () async {
@@ -270,6 +313,16 @@ AuthenticatedSession _session({
     accessToken: 'token',
     user: UserProfile(id: 'user-1', email: email, name: 'Owner'),
   );
+}
+
+class _FakeCapabilitiesRepository implements ServerCapabilitiesRepository {
+  const _FakeCapabilitiesRepository(this._capabilities);
+
+  final ServerCapabilities _capabilities;
+
+  @override
+  Future<ServerCapabilities> fetch(AuthenticatedSession session) async =>
+      _capabilities;
 }
 
 class _InMemoryProfileStorage implements ProfileStorage {

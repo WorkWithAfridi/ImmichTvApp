@@ -436,9 +436,16 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
   }
 
   List<String> _resolvePlayableVideoUrls() {
+    final hlsUrl = widget.asset.hlsUrl;
+    final preferHls = !kIsWeb && hlsUrl != null;
+    final candidates = <String>[
+      if (preferHls) hlsUrl,
+      ...widget.asset.displayUrls,
+    ];
     return resolvePlayableVideoUrls(
-      widget.asset.displayUrls,
+      candidates,
       hdrEnabled: widget.hdrPlaybackEnabled,
+      preferHls: preferHls,
     );
   }
 

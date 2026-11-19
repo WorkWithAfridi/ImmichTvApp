@@ -7,7 +7,9 @@ import '../../../core/models/asset_sort_order.dart';
 import '../../../core/models/authenticated_session.dart';
 import '../../../core/models/asset_summary.dart';
 import '../../../core/models/media_page.dart';
+import '../../../core/models/memory_summary.dart';
 import '../../../core/models/person_summary.dart';
+import '../../../core/models/server_capabilities.dart';
 import '../../../core/network/immich_headers.dart';
 import '../../../core/repositories/media_repository.dart';
 import '../../mock/data/mock_media_repository.dart';
@@ -89,6 +91,33 @@ class ImmichMediaRepository implements MediaRepository {
         return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       });
     return sortedPeople;
+  }
+
+  @override
+  Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session) async {
+    if (DemoMode.matchesServerUrl(session.serverConfig.serverUrl)) {
+      return _mockMediaRepository.fetchMemories(session);
+    }
+    if (!session.capabilities.supports(ServerFeature.memories)) {
+      return const <MemorySummary>[];
+    }
+
+    final response = await _dio.get<dynamic>(
+      session.serverConfig.apiEndpoint('memories').toString(),
+      queryParameters: const {'size': 50},
+      options: Options(headers: ImmichHeaders.sessionHeaders(session)),
+    );
+
+    final items = _extractMemoryMaps(response.data);
+    return items
+        .map(
+          (item) => MemorySummary.fromJson(
+            item,
+            assets: _memoryAssets(item, session),
+          ),
+        )
+        .where((memory) => memory.assets.isNotEmpty)
+        .toList(growable: false);
   }
 
   @override
@@ -424,6 +453,43 @@ class ImmichMediaRepository implements MediaRepository {
     return const [];
   }
 
+  List<Map<String, dynamic>> _extractMemoryMaps(dynamic payload) {
+    if (payload is List) {
+      return payload.whereType<Map<String, dynamic>>().toList(growable: false);
+    }
+
+    if (payload is Map<String, dynamic>) {
+      for (final candidate in <dynamic>[
+        payload['memories'],
+        payload['items'],
+        payload['results'],
+      ]) {
+        if (candidate is List) {
+          return candidate.whereType<Map<String, dynamic>>().toList(
+            growable: false,
+          );
+        }
+      }
+    }
+
+    return const [];
+  }
+
+  List<AssetSummary> _memoryAssets(
+    Map<String, dynamic> memory,
+    AuthenticatedSession session,
+  ) {
+    final rawAssets = memory['assets'];
+    if (rawAssets is! List) {
+      return const <AssetSummary>[];
+    }
+    return rawAssets
+        .whereType<Map<String, dynamic>>()
+        .map((item) => _mapAsset(item, session))
+        .whereType<AssetSummary>()
+        .toList(growable: false);
+  }
+
   AlbumSummary? _mapAlbum(Map<String, dynamic> item) {
     final id = item['id'] as String?;
     final name = (item['albumName'] ?? item['name'] ?? item['title'])
@@ -495,6 +561,12 @@ class ImmichMediaRepository implements MediaRepository {
       displayUrls: _buildDisplayUrls(session, id, type),
       type: type,
       createdAt: createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+      hlsUrl: session.capabilities.supports(ServerFeature.hlsVideo) &&
+              type.toUpperCase().contains('VIDEO')
+          ? session.serverConfig
+              .apiEndpoint('assets/$id/video/stream/main.m3u8')
+              .toString()
+          : null,
     );
   }
 

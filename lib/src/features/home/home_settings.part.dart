@@ -294,6 +294,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onCancel: _cancelEnrollingPin,
                       ),
                     ],
+                    SizedBox(height: _settingsSectionSpacing(context)),
+                    const _SettingsGroupLabel(label: 'SERVER'),
+                    SizedBox(height: _settingsChipSpacing(context)),
+                    _SettingsInfoCard(
+                      label: 'Immich version',
+                      value: widget.session.capabilities.versionLabel,
+                    ),
+                    SizedBox(height: _settingsChipSpacing(context)),
+                    _SettingsInfoCard(
+                      label: 'Available features',
+                      value: _serverFeatureSummary(widget.session.capabilities),
+                    ),
                   ],
                 );
               },
@@ -303,6 +315,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+}
+
+String _serverFeatureSummary(ServerCapabilities capabilities) {
+  final labels = <String>[
+    if (capabilities.supports(ServerFeature.memories)) 'Memories',
+    if (capabilities.supports(ServerFeature.smartSearch)) 'Smart search',
+    if (capabilities.supports(ServerFeature.map)) 'Places',
+    if (capabilities.supports(ServerFeature.hlsVideo)) 'Adaptive video',
+  ];
+  return labels.isEmpty ? 'Basic browsing' : labels.join(' · ');
 }
 
 double _settingsSectionSpacing(BuildContext context) {

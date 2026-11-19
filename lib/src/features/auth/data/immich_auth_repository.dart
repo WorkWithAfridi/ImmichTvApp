@@ -12,6 +12,7 @@ import '../../../core/models/server_config.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/network/immich_headers.dart';
 import '../../../core/repositories/auth_repository.dart';
+import '../../../core/repositories/server_capabilities_repository.dart';
 import '../../../features/mock/data/mock_auth_repository.dart';
 import '../../../platform/auth/browser_session_bridge.dart';
 import '../../../platform/storage/profile_storage.dart';
@@ -20,11 +21,14 @@ class ImmichAuthRepository implements AuthRepository {
   ImmichAuthRepository({
     required Dio dio,
     required ProfileStorage profileStorage,
+    ServerCapabilitiesRepository? capabilitiesRepository,
   }) : _dio = dio,
-       _profileStorage = profileStorage;
+       _profileStorage = profileStorage,
+       _capabilitiesRepository = capabilitiesRepository;
 
   final Dio _dio;
   final ProfileStorage _profileStorage;
+  final ServerCapabilitiesRepository? _capabilitiesRepository;
 
   @override
   Future<AuthenticatedSession> signIn({
@@ -322,12 +326,31 @@ class ImmichAuthRepository implements AuthRepository {
       profileResponse.data ?? const <String, dynamic>{},
     );
 
-    return AuthenticatedSession(
+    final session = AuthenticatedSession(
       serverConfig: serverConfig,
       accessToken: credential,
       user: user,
       authMethod: authMethod,
     );
+    return _withCapabilities(session);
+  }
+
+  /// Capability discovery is best-effort: a server that does not expose the
+  /// probe endpoints (or a flaky connection) simply yields unknown features.
+  Future<AuthenticatedSession> _withCapabilities(
+    AuthenticatedSession session,
+  ) async {
+    final repository = _capabilitiesRepository;
+    if (repository == null ||
+        DemoMode.matchesServerUrl(session.serverConfig.serverUrl)) {
+      return session;
+    }
+
+    try {
+      return session.copyWith(capabilities: await repository.fetch(session));
+    } catch (_) {
+      return session;
+    }
   }
 
   AppException _mapSignInError(DioException error) {
@@ -348,7 +371,13 @@ class ImmichAuthRepository implements AuthRepository {
 
   AppException _mapApiKeyError(DioException error) {
     final statusCode = error.response?.statusCode;
-    if (statusCode == 401 || statusCode == 403) {
+    if (statusCode == 403) {
+      return const AppException(
+        'This API key is valid but is missing permissions for this action. Create a key with read access to albums, assets, and people.',
+        code: 'api_key_missing_permission',
+      );
+    }
+    if (statusCode == 401) {
       return const AppException(
         'Immich rejected that API key. Check that it is still valid and has not been revoked.',
         code: 'invalid_api_key',

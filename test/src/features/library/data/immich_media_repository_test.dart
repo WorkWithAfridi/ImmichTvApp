@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:immichtv/src/core/models/authenticated_session.dart';
+import 'package:immichtv/src/core/models/server_capabilities.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
 import 'package:immichtv/src/core/models/user_profile.dart';
 import 'package:immichtv/src/features/library/data/immich_media_repository.dart';
@@ -85,6 +86,87 @@ void main() {
     expect(adapter.requests.last.queryParameters, {'page': 2, 'size': 100});
   });
 
+  test('videos expose the HLS playlist on servers that support it', () async {
+    final adapter = _RecordingHttpClientAdapter(
+      responses: [_searchResponse(nextPage: null, type: 'VIDEO')],
+    );
+    final session = _session(
+      capabilities: const ServerCapabilities(major: 3, minor: 0, patch: 0),
+    );
+
+    final page = await ImmichMediaRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    ).fetchTimelinePage(session, year: 2025);
+
+    expect(
+      page.items.first.hlsUrl,
+      'https://photos.example.com/api/assets/asset-last/video/stream/main.m3u8',
+    );
+  });
+
+  test('HLS is hidden on servers older than v3', () async {
+    final adapter = _RecordingHttpClientAdapter(
+      responses: [_searchResponse(nextPage: null, type: 'VIDEO')],
+    );
+    final session = _session(
+      capabilities: const ServerCapabilities(major: 2, minor: 7, patch: 0),
+    );
+
+    final page = await ImmichMediaRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    ).fetchTimelinePage(session, year: 2025);
+
+    expect(page.items.first.hlsUrl, isNull);
+  });
+
+  test('memories resolve embedded assets and carry their data', () async {
+    final adapter = _RecordingHttpClientAdapter(
+      responses: [
+        _jsonResponse([
+          {
+            'id': 'memory-1',
+            'type': 'ON_THIS_DAY',
+            'memoryAt': '2023-11-19T10:00:00.000Z',
+            'data': {'year': 2023},
+            'assets': [
+              {
+                'id': 'memory-asset-1',
+                'type': 'IMAGE',
+                'fileCreatedAt': '2023-11-19T10:00:00.000Z',
+              },
+            ],
+          },
+        ]),
+      ],
+    );
+    final repository = ImmichMediaRepository(dio: Dio()..httpClientAdapter = adapter);
+
+    final memories = await repository.fetchMemories(_session());
+
+    expect(memories, hasLength(1));
+    expect(memories.single.title, '2023');
+    expect(memories.single.assets.single.id, 'memory-asset-1');
+    expect(
+      adapter.requests.single.uri.toString(),
+      'https://photos.example.com/api/memories?size=50',
+    );
+    expect(adapter.requests.single.queryParameters, {'size': 50});
+  });
+
+  test('memories are skipped entirely on servers without support', () async {
+    final adapter = _RecordingHttpClientAdapter();
+    final session = _session(
+      capabilities: const ServerCapabilities(major: 1, minor: 140, patch: 0),
+    );
+
+    final memories = await ImmichMediaRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    ).fetchMemories(session);
+
+    expect(memories, isEmpty);
+    expect(adapter.requests, isEmpty);
+  });
+
   test('grid uses thumbnail before preview without changing display URLs', () async {
     final adapter = _RecordingHttpClientAdapter(
       responses: [_searchResponse(nextPage: null)],
@@ -107,13 +189,16 @@ void main() {
   });
 }
 
-ResponseBody _searchResponse({required String? nextPage}) {
+ResponseBody _searchResponse({
+  required String? nextPage,
+  String type = 'IMAGE',
+}) {
   return _jsonResponse({
     'assets': {
       'items': [
         {
           'id': 'asset-${nextPage ?? 'last'}',
-          'type': 'IMAGE',
+          'type': type,
           'fileCreatedAt': '2025-06-01T12:00:00.000Z',
         },
       ],
@@ -132,8 +217,9 @@ ResponseBody _jsonResponse(Object body) {
   );
 }
 
-AuthenticatedSession _session() {
+AuthenticatedSession _session({ServerCapabilities? capabilities}) {
   return AuthenticatedSession(
+    capabilities: capabilities ?? const ServerCapabilities(),
     serverConfig: ServerConfig(
       rawInput: 'https://photos.example.com',
       serverUrl: Uri.parse('https://photos.example.com'),

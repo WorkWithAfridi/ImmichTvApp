@@ -24,6 +24,7 @@ class PlatformSessionStorage implements SessionStorage {
         'serverConfig': session.serverConfig.toJson(),
         'user': session.user.toJson(),
         'authMethod': session.authMethod.storageValue,
+        'capabilities': session.capabilities.toJson(),
       }),
     );
 
@@ -64,6 +65,7 @@ class PlatformSessionStorage implements SessionStorage {
       'user': decoded['user'],
       'accessToken': token,
       'authMethod': decoded['authMethod'],
+      'capabilities': decoded['capabilities'],
     });
   }
 

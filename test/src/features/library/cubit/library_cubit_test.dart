@@ -1,9 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:immichtv/src/core/models/album_summary.dart';
 import 'package:immichtv/src/core/models/asset_sort_order.dart';
 import 'package:immichtv/src/core/models/asset_summary.dart';
 import 'package:immichtv/src/core/models/authenticated_session.dart';
 import 'package:immichtv/src/core/models/media_page.dart';
+import 'package:immichtv/src/core/models/memory_summary.dart';
 import 'package:immichtv/src/core/errors/app_exception.dart';
 import 'package:immichtv/src/core/models/person_summary.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
@@ -101,6 +103,52 @@ void main() {
     expect(cubit.state.favoritesSortOrder, AssetSortOrder.oldestFirst);
     expect(repository.lastFavoritesSortOrder, AssetSortOrder.oldestFirst);
   });
+
+  test('successful load records when the library was last refreshed', () async {
+    final cubit = LibraryCubit(_FakeMediaRepository(), _session());
+    addTearDown(cubit.close);
+
+    await cubit.loadInitial();
+
+    expect(cubit.state.lastUpdatedAt, isNotNull);
+    expect(cubit.state.isOffline, isFalse);
+  });
+
+  test('connectivity failure during initial load marks the library offline',
+      () async {
+    final repository = _FakeMediaRepository()
+      ..throwConnectivityOnTimelineRefresh = true;
+    final cubit = LibraryCubit(repository, _session());
+    addTearDown(cubit.close);
+
+    await cubit.loadInitial();
+
+    expect(cubit.state.status, LibraryLoadStatus.failure);
+    expect(cubit.state.isOffline, isTrue);
+  });
+
+  test('background refresh failure keeps cached items and shows offline state',
+      () async {
+    final repository = _FakeMediaRepository();
+    final cubit = LibraryCubit(repository, _session());
+    addTearDown(cubit.close);
+
+    await cubit.loadInitial();
+    final cachedTimeline = cubit.state.timeline;
+    repository.throwConnectivityOnTimelineRefresh = true;
+
+    await cubit.refreshContent();
+
+    expect(cubit.state.status, LibraryLoadStatus.success);
+    expect(cubit.state.timeline, cachedTimeline);
+    expect(cubit.state.isOffline, isTrue);
+
+    repository.throwConnectivityOnTimelineRefresh = false;
+    await cubit.retry();
+
+    expect(cubit.state.isOffline, isFalse);
+    expect(cubit.state.lastUpdatedAt, isNotNull);
+  });
 }
 
 class _FakeMediaRepository implements MediaRepository {
@@ -133,6 +181,7 @@ class _FakeMediaRepository implements MediaRepository {
   bool throwAlbums = false;
   bool throwFavorites = false;
   bool throwPeople = false;
+  bool throwConnectivityOnTimelineRefresh = false;
   AssetSortOrder lastFavoritesSortOrder = AssetSortOrder.newestFirst;
 
   @override
@@ -142,6 +191,10 @@ class _FakeMediaRepository implements MediaRepository {
     }
     return albums;
   }
+
+  @override
+  Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session) async =>
+      const <MemorySummary>[];
 
   @override
   Future<List<PersonSummary>> fetchPeople(AuthenticatedSession session) async {
@@ -189,7 +242,15 @@ class _FakeMediaRepository implements MediaRepository {
     String? page,
     int pageSize = 60,
     int? year,
-  }) async => timelinePages[page] ?? const MediaPage(items: []);
+  }) async {
+    if (throwConnectivityOnTimelineRefresh && (page == null || page == '1')) {
+      throw DioException.connectionError(
+        requestOptions: RequestOptions(path: '/api/search/metadata'),
+        reason: 'connection refused',
+      );
+    }
+    return timelinePages[page] ?? const MediaPage(items: []);
+  }
 }
 
 AuthenticatedSession _session() {

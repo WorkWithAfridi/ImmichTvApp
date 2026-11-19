@@ -8,6 +8,7 @@ class AssetSummary extends Equatable {
     required this.type,
     required this.createdAt,
     this.requiresAuth = true,
+    this.hlsUrl,
   });
 
   final String id;
@@ -16,6 +17,11 @@ class AssetSummary extends Equatable {
   final String type;
   final DateTime createdAt;
   final bool requiresAuth;
+
+  /// Alpha Immich HLS playlist URL for videos. Present only when the connected
+  /// server supports adaptive streaming; the viewer falls back to the regular
+  /// playback URLs if it fails.
+  final String? hlsUrl;
 
   bool get isVideo => type.toUpperCase().contains('VIDEO');
 
@@ -31,5 +37,6 @@ class AssetSummary extends Equatable {
     type,
     createdAt,
     requiresAuth,
+    hlsUrl,
   ];
 }

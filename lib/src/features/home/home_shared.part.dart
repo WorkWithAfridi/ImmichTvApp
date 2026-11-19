@@ -751,7 +751,7 @@ class _TimelineAssetEntry {
   final int globalIndex;
 }
 
-String _sectionViewState(LibraryLoadStatus status, List<AssetSummary> assets) {
+String _sectionViewState(LibraryLoadStatus status, List<Object> assets) {
   if (status == LibraryLoadStatus.loading) {
     return 'loading';
   }

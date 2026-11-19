@@ -4,12 +4,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/errors/app_exception.dart';
-import '../../../core/models/album_summary.dart';
 import '../../../core/models/asset_sort_order.dart';
 import '../../../core/models/asset_summary.dart';
 import '../../../core/models/authenticated_session.dart';
 import '../../../core/models/media_page.dart';
-import '../../../core/models/person_summary.dart';
+import '../../../core/network/network_failure.dart';
 import '../../../core/repositories/media_repository.dart';
 import 'library_state.dart';
 
@@ -36,7 +35,7 @@ class LibraryCubit extends Cubit<LibraryState> {
         year: state.selectedTimelineYear,
       );
 
-      emit(
+      _emitLoaded(
         state.copyWith(
           status: LibraryLoadStatus.success,
           timeline: timeline.items,
@@ -50,21 +49,65 @@ class LibraryCubit extends Cubit<LibraryState> {
       _ensureRefreshPolling();
       unawaited(_preloadInitialSupportingSections());
     } catch (error) {
-      emit(
+      _emitFailure(
         state.copyWith(
           status: LibraryLoadStatus.failure,
           errorMessage: error is AppException
               ? error.message
               : 'We could not load your library right now.',
         ),
+        error,
       );
     }
   }
 
+  LibraryState _loaded(LibraryState next) {
+    return next.copyWith(lastUpdatedAt: DateTime.now(), isOffline: false);
+  }
+
+  void _emitLoaded(LibraryState next) {
+    if (isClosed) {
+      return;
+    }
+    emit(_loaded(next));
+  }
+
+  void _emitFailure(LibraryState next, Object error) {
+    if (isClosed) {
+      return;
+    }
+    emit(
+      next.copyWith(
+        isOffline: next.isOffline || NetworkFailure.isConnectivityIssue(error),
+      ),
+    );
+  }
+
   Future<void> _preloadInitialSupportingSections() async {
-    final nextAlbums = await _safeFetchAlbums();
-    final nextFavorites = await _safeFetchFavorites();
-    final nextPeople = await _safeFetchPeople();
+    Object? connectivityFailure;
+
+    Future<T?> safely<T>(Future<T> Function() fetch) async {
+      try {
+        return await fetch();
+      } catch (error) {
+        if (NetworkFailure.isConnectivityIssue(error)) {
+          connectivityFailure ??= error;
+        }
+        return null;
+      }
+    }
+
+    final nextAlbums = await safely(() => _mediaRepository.fetchAlbums(_session));
+    final nextFavorites = await safely(
+      () => _mediaRepository.fetchFavoritesPage(
+        _session,
+        sortOrder: state.favoritesSortOrder,
+      ),
+    );
+    final nextPeople = await safely(() => _mediaRepository.fetchPeople(_session));
+    final nextMemories = await safely(
+      () => _mediaRepository.fetchMemories(_session),
+    );
 
     if (isClosed) {
       return;
@@ -80,6 +123,9 @@ class LibraryCubit extends Cubit<LibraryState> {
       hasLoadedFavorites: nextFavorites != null || state.hasLoadedFavorites,
       people: nextPeople ?? state.people,
       hasLoadedPeople: nextPeople != null || state.hasLoadedPeople,
+      memories: nextMemories ?? state.memories,
+      hasLoadedMemories: nextMemories != null || state.hasLoadedMemories,
+      isOffline: connectivityFailure != null,
     );
 
     if (nextState != state) {
@@ -114,7 +160,7 @@ class LibraryCubit extends Cubit<LibraryState> {
             _session,
             year: state.selectedTimelineYear,
           );
-          emit(
+          _emitLoaded(
             state.copyWith(
               selectedTab: tab,
               timeline: timeline.items,
@@ -129,7 +175,7 @@ class LibraryCubit extends Cubit<LibraryState> {
           _ensureRefreshPolling();
         case LibraryTab.albums:
           final albums = await _mediaRepository.fetchAlbums(_session);
-          emit(
+          _emitLoaded(
             state.copyWith(
               selectedTab: tab,
               albums: albums,
@@ -142,7 +188,7 @@ class LibraryCubit extends Cubit<LibraryState> {
           _ensureRefreshPolling();
         case LibraryTab.people:
           final people = await _mediaRepository.fetchPeople(_session);
-          emit(
+          _emitLoaded(
             state.copyWith(
               selectedTab: tab,
               people: people,
@@ -158,13 +204,26 @@ class LibraryCubit extends Cubit<LibraryState> {
             _session,
             sortOrder: state.favoritesSortOrder,
           );
-          emit(
+          _emitLoaded(
             state.copyWith(
               selectedTab: tab,
               favorites: favorites.items,
               favoritesNextPage: favorites.nextPage,
               clearFavoritesNextPage: favorites.nextPage == null,
               hasLoadedFavorites: true,
+              status: LibraryLoadStatus.success,
+              isLoadingMore: false,
+              clearError: true,
+            ),
+          );
+          _ensureRefreshPolling();
+        case LibraryTab.memories:
+          final memories = await _mediaRepository.fetchMemories(_session);
+          _emitLoaded(
+            state.copyWith(
+              selectedTab: tab,
+              memories: memories,
+              hasLoadedMemories: true,
               status: LibraryLoadStatus.success,
               isLoadingMore: false,
               clearError: true,
@@ -183,7 +242,7 @@ class LibraryCubit extends Cubit<LibraryState> {
           );
       }
     } catch (error) {
-      emit(
+      _emitFailure(
         state.copyWith(
           selectedTab: tab,
           status: LibraryLoadStatus.failure,
@@ -191,6 +250,7 @@ class LibraryCubit extends Cubit<LibraryState> {
               ? error.message
               : 'We could not load this section right now.',
         ),
+        error,
       );
     }
   }
@@ -214,6 +274,8 @@ class LibraryCubit extends Cubit<LibraryState> {
       case LibraryTab.people:
         return;
       case LibraryTab.albums:
+        return;
+      case LibraryTab.memories:
         return;
       case LibraryTab.settings:
         return;
@@ -241,7 +303,7 @@ class LibraryCubit extends Cubit<LibraryState> {
         _session,
         year: year,
       );
-      emit(
+      _emitLoaded(
         state.copyWith(
           selectedTimelineYear: year,
           selectedTab: LibraryTab.timeline,
@@ -256,7 +318,7 @@ class LibraryCubit extends Cubit<LibraryState> {
       );
       _ensureRefreshPolling();
     } catch (error) {
-      emit(
+      _emitFailure(
         state.copyWith(
           selectedTimelineYear: year,
           selectedTab: LibraryTab.timeline,
@@ -265,6 +327,7 @@ class LibraryCubit extends Cubit<LibraryState> {
               ? error.message
               : 'We could not load this year right now.',
         ),
+        error,
       );
     }
   }
@@ -291,7 +354,7 @@ class LibraryCubit extends Cubit<LibraryState> {
         _session,
         sortOrder: sortOrder,
       );
-      emit(
+      _emitLoaded(
         state.copyWith(
           favoritesSortOrder: sortOrder,
           selectedTab: LibraryTab.favorites,
@@ -306,7 +369,7 @@ class LibraryCubit extends Cubit<LibraryState> {
       );
       _ensureRefreshPolling();
     } catch (error) {
-      emit(
+      _emitFailure(
         state.copyWith(
           favoritesSortOrder: sortOrder,
           selectedTab: LibraryTab.favorites,
@@ -315,6 +378,7 @@ class LibraryCubit extends Cubit<LibraryState> {
               ? error.message
               : 'We could not load this section right now.',
         ),
+        error,
       );
     }
   }
@@ -341,13 +405,14 @@ class LibraryCubit extends Cubit<LibraryState> {
         ),
       );
     } catch (error) {
-      emit(
+      _emitFailure(
         state.copyWith(
           isLoadingMore: false,
           errorMessage: error is AppException
               ? error.message
               : 'We could not load more timeline photos right now.',
         ),
+        error,
       );
     }
   }
@@ -374,13 +439,14 @@ class LibraryCubit extends Cubit<LibraryState> {
         ),
       );
     } catch (error) {
-      emit(
+      _emitFailure(
         state.copyWith(
           isLoadingMore: false,
           errorMessage: error is AppException
               ? error.message
               : 'We could not load more favorite photos right now.',
         ),
+        error,
       );
     }
   }
@@ -401,6 +467,7 @@ class LibraryCubit extends Cubit<LibraryState> {
       LibraryTab.albums => state.hasLoadedAlbums,
       LibraryTab.people => state.hasLoadedPeople,
       LibraryTab.favorites => state.hasLoadedFavorites,
+      LibraryTab.memories => state.hasLoadedMemories,
       LibraryTab.settings => true,
     };
   }
@@ -411,37 +478,14 @@ class LibraryCubit extends Cubit<LibraryState> {
     });
   }
 
-  Future<List<AlbumSummary>?> _safeFetchAlbums() async {
-    try {
-      return await _mediaRepository.fetchAlbums(_session);
-    } catch (_) {
-      return null;
-    }
-  }
+  /// Manual retry entry point used by the offline banner.
+  Future<void> retry() => refreshContent(force: true);
 
-  Future<MediaPage<AssetSummary>?> _safeFetchFavorites() async {
-    try {
-      return await _mediaRepository.fetchFavoritesPage(
-        _session,
-        sortOrder: state.favoritesSortOrder,
-      );
-    } catch (_) {
-      return null;
+  Future<void> refreshContent({bool force = false}) async {
+    if (_isRefreshing || state.isLoadingMore) {
+      return;
     }
-  }
-
-  Future<List<PersonSummary>?> _safeFetchPeople() async {
-    try {
-      return await _mediaRepository.fetchPeople(_session);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> refreshContent() async {
-    if (_isRefreshing ||
-        state.status != LibraryLoadStatus.success ||
-        state.isLoadingMore) {
+    if (!force && state.status != LibraryLoadStatus.success) {
       return;
     }
 
@@ -456,9 +500,11 @@ class LibraryCubit extends Cubit<LibraryState> {
         sortOrder: state.favoritesSortOrder,
       );
       final albumsFuture = _mediaRepository.fetchAlbums(_session);
+      final memoriesFuture = _mediaRepository.fetchMemories(_session);
       final timeline = await timelineFuture;
       final favorites = await favoritesFuture;
       final albums = await albumsFuture;
+      final memories = await memoriesFuture;
 
       final refreshedTimeline = _mergeRefreshedAssets(
         existing: state.timeline,
@@ -477,18 +523,23 @@ class LibraryCubit extends Cubit<LibraryState> {
         favoritesNextPage: favorites.nextPage,
         clearFavoritesNextPage: favorites.nextPage == null,
         albums: albums,
+        memories: memories,
         hasLoadedTimeline: true,
         hasLoadedFavorites: true,
         hasLoadedAlbums: true,
+        hasLoadedMemories: true,
         status: LibraryLoadStatus.success,
+        isOffline: false,
         clearError: true,
       );
 
       if (nextState != state) {
-        emit(nextState);
+        emit(nextState.copyWith(lastUpdatedAt: DateTime.now()));
       }
-    } catch (_) {
-      // Keep the current surface stable on background refresh failures.
+    } catch (error) {
+      // Keep the current surface stable on background refresh failures, but
+      // let the UI know that the data on screen may be stale.
+      _emitFailure(state, error);
     } finally {
       _isRefreshing = false;
     }

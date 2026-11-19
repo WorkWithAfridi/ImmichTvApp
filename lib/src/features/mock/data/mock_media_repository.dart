@@ -3,6 +3,7 @@ import '../../../core/models/asset_sort_order.dart';
 import '../../../core/models/authenticated_session.dart';
 import '../../../core/models/asset_summary.dart';
 import '../../../core/models/media_page.dart';
+import '../../../core/models/memory_summary.dart';
 import '../../../core/models/person_summary.dart';
 import '../../../core/repositories/media_repository.dart';
 
@@ -11,12 +12,14 @@ class MockMediaRepository implements MediaRepository {
     : _timeline = _buildTimeline(),
       _favorites = _buildFavorites(),
       _albums = _buildAlbums(),
-      _people = _buildPeople();
+      _people = _buildPeople(),
+      _memories = _buildMemories(_buildTimeline());
 
   final List<AssetSummary> _timeline;
   final List<AssetSummary> _favorites;
   final List<AlbumSummary> _albums;
   final List<PersonSummary> _people;
+  final List<MemorySummary> _memories;
 
   static const _pageSizeDefault = 60;
 
@@ -30,6 +33,12 @@ class MockMediaRepository implements MediaRepository {
   Future<List<PersonSummary>> fetchPeople(AuthenticatedSession session) async {
     await Future<void>.delayed(const Duration(milliseconds: 320));
     return _people;
+  }
+
+  @override
+  Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session) async {
+    await Future<void>.delayed(const Duration(milliseconds: 280));
+    return _memories;
   }
 
   @override
@@ -176,6 +185,40 @@ List<AssetSummary> _buildTimeline() {
 
 String _picsumSquareUrl({required String seed, required int size}) {
   return 'https://picsum.photos/seed/$seed/$size/$size';
+}
+
+List<MemorySummary> _buildMemories(List<AssetSummary> timeline) {
+  if (timeline.isEmpty) {
+    return const <MemorySummary>[];
+  }
+
+  const configurations = <Map<String, Object>>[
+    {'title': '2023', 'subtitle': '3 years ago', 'count': 8},
+    {'title': '2024', 'subtitle': '2 years ago', 'count': 10},
+    {'title': 'Avery\'s birthday', 'subtitle': 'Last year', 'count': 6},
+    {'title': '2025', 'subtitle': 'One year ago', 'count': 12},
+  ];
+
+  var start = 0;
+  final memories = <MemorySummary>[];
+  for (final configuration in configurations) {
+    final count = configuration['count']! as int;
+    final assets = timeline.skip(start).take(count).toList(growable: false);
+    start += count;
+    if (assets.isEmpty) {
+      break;
+    }
+    memories.add(
+      MemorySummary(
+        id: 'mock-memory-${memories.length + 1}',
+        title: configuration['title']! as String,
+        subtitle: configuration['subtitle']! as String,
+        memoryAt: assets.first.createdAt,
+        assets: assets,
+      ),
+    );
+  }
+  return List<MemorySummary>.unmodifiable(memories);
 }
 
 List<AssetSummary> _buildFavorites() {

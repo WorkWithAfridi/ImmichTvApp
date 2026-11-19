@@ -9,6 +9,7 @@ import 'package:immichtv/src/core/models/asset_summary.dart';
 import 'package:immichtv/src/core/models/asset_sort_order.dart';
 import 'package:immichtv/src/core/models/immich_auth_method.dart';
 import 'package:immichtv/src/core/models/media_page.dart';
+import 'package:immichtv/src/core/models/memory_summary.dart';
 import 'package:immichtv/src/core/models/person_summary.dart';
 import 'package:immichtv/src/core/models/saved_profile.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
@@ -435,20 +436,22 @@ void main() {
       contains('inputMethod.native'),
     );
 
+    // Another down press at the bottom card is a no-op.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    await tester.pumpAndSettle();
-    expect(
-      FocusManager.instance.primaryFocus?.debugLabel,
-      contains('inputMethod.continue'),
-    );
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
       contains('inputMethod.native'),
     );
 
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('inputMethod.tv'),
+    );
+
+    // Likewise, moving up from the first card keeps focus in place.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
     expect(
@@ -731,6 +734,59 @@ void main() {
     expect(find.text('Avery'), findsWidgets);
     expect(find.text('3 assets'), findsWidgets);
     expect(_findAssetThumbnail('person-asset-1'), findsOneWidget);
+  });
+
+  testWidgets('shows memories and opens them in the fullscreen viewer', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1100, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final memory = MemorySummary(
+      id: 'memory-1',
+      title: '2023',
+      subtitle: '3 years ago',
+      memoryAt: DateTime.utc(2023, 11, 19),
+      assets: [
+        AssetSummary(
+          id: 'memory-asset-1',
+          thumbnailUrls: [
+            'https://photos.example.com/api/assets/memory-asset-1/thumbnail?size=preview',
+          ],
+          displayUrls: [
+            'https://photos.example.com/api/assets/memory-asset-1/original',
+          ],
+          type: 'IMAGE',
+          createdAt: DateTime.utc(2023, 11, 19),
+        ),
+      ],
+    );
+
+    await _pumpSignedInApp(
+      tester,
+      mediaRepository: FakeMediaRepository(memories: [memory]),
+    );
+
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    for (var index = 0; index < 4; index++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('2023'), findsOneWidget);
+    expect(find.text('3 years ago'), findsOneWidget);
+    expect(_findAssetThumbnail('memory-asset-1'), findsOneWidget);
+
+    await tester.tap(find.text('2023'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byIcon(Icons.close_rounded), findsWidgets);
   });
 
   testWidgets('loads the next timeline page as the grid scrolls', (
@@ -1038,14 +1094,20 @@ class FakeMediaRepository implements MediaRepository {
   FakeMediaRepository({
     this.paginatedTimeline = false,
     this.includeVideoAsset = false,
+    this.memories = const <MemorySummary>[],
   });
 
   final bool paginatedTimeline;
   final bool includeVideoAsset;
+  final List<MemorySummary> memories;
 
   @override
   Future<List<AlbumSummary>> fetchAlbums(AuthenticatedSession session) async =>
       [const AlbumSummary(id: 'album-1', name: 'Summer Trip', assetCount: 42)];
+
+  @override
+  Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session) async =>
+      memories;
 
   @override
   Future<List<PersonSummary>> fetchPeople(AuthenticatedSession session) async =>

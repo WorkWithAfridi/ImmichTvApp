@@ -3,12 +3,17 @@ import '../models/asset_sort_order.dart';
 import '../models/authenticated_session.dart';
 import '../models/asset_summary.dart';
 import '../models/media_page.dart';
+import '../models/memory_summary.dart';
 import '../models/person_summary.dart';
 
 abstract class MediaRepository {
   Future<List<AlbumSummary>> fetchAlbums(AuthenticatedSession session);
 
   Future<List<PersonSummary>> fetchPeople(AuthenticatedSession session);
+
+  /// Returns memories when the connected server supports them, otherwise an
+  /// empty list. Callers should gate on `ServerFeature.memories`.
+  Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session);
 
   Future<MediaPage<AssetSummary>> fetchAlbumAssetsPage(
     AuthenticatedSession session, {

@@ -33,6 +33,34 @@ void main() {
     ]);
   });
 
+  test('prefers HLS when adaptive streaming is available', () {
+    final urls = resolvePlayableVideoUrls(
+      [
+        'https://photos.example.com/api/assets/id/video/playback',
+        'https://photos.example.com/api/assets/id/video/stream/main.m3u8',
+        'https://photos.example.com/api/assets/id/original',
+      ],
+      hdrEnabled: false,
+      preferHls: true,
+    );
+
+    expect(urls.first, 'https://photos.example.com/api/assets/id/video/stream/main.m3u8');
+    expect(urls, hasLength(3));
+  });
+
+  test('HLS is not prioritized without an explicit opt-in', () {
+    final urls = resolvePlayableVideoUrls(
+      [
+        'https://photos.example.com/api/assets/id/video/playback',
+        'https://photos.example.com/api/assets/id/video/stream/main.m3u8',
+      ],
+      hdrEnabled: false,
+    );
+
+    expect(urls.first, 'https://photos.example.com/api/assets/id/video/playback');
+    expect(urls.last, 'https://photos.example.com/api/assets/id/video/stream/main.m3u8');
+  });
+
   test('only uses the SurfaceView-backed Android player for HDR', () {
     expect(
       nativeVideoViewType(TargetPlatform.android, hdrEnabled: false),

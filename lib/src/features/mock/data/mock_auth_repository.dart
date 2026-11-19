@@ -5,6 +5,7 @@ import '../../../core/models/authenticated_session.dart';
 import '../../../core/models/immich_auth_method.dart';
 import '../../../core/models/saved_profile.dart';
 import '../../../core/models/saved_profile_secret.dart';
+import '../../../core/models/server_capabilities.dart';
 import '../../../core/models/server_config.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/repositories/auth_repository.dart';
@@ -41,6 +42,7 @@ class MockAuthRepository implements AuthRepository {
         name: _displayNameFromEmail(trimmedEmail),
       ),
       authMethod: ImmichAuthMethod.password,
+      capabilities: ServerCapabilities.demo(),
     );
   }
 
@@ -68,6 +70,7 @@ class MockAuthRepository implements AuthRepository {
         name: 'API Key User',
       ),
       authMethod: ImmichAuthMethod.apiKey,
+      capabilities: ServerCapabilities.demo(),
     );
   }
 

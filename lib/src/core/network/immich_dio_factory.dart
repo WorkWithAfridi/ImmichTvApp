@@ -2,11 +2,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../logging/app_logger.dart';
+import 'immich_retry_interceptor.dart';
 
 class ImmichDioFactory {
   const ImmichDioFactory._();
 
-  static Dio create() {
+  static Dio create({bool enableRetries = true}) {
     const connectTimeout = Duration(seconds: 12);
     const receiveTimeout = Duration(seconds: 12);
 
@@ -19,6 +20,10 @@ class ImmichDioFactory {
         sendTimeout: kIsWeb ? null : connectTimeout,
       ),
     );
+
+    if (enableRetries) {
+      dio.interceptors.add(ImmichRetryInterceptor(dio));
+    }
 
     if (kDebugMode) {
       dio.interceptors.add(dioLogger);
