@@ -3,18 +3,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/models/authenticated_session.dart';
 import '../../../core/repositories/auth_repository.dart';
+import '../../../core/repositories/playback_preferences.dart';
+import '../../../platform/storage/platform_playback_preferences.dart';
 import 'settings_state.dart';
 
 class SettingsCubit extends Cubit<SettingsState> {
   SettingsCubit({
     required AuthRepository authRepository,
     required AuthenticatedSession session,
+    PlaybackPreferences? playbackPreferences,
   }) : _authRepository = authRepository,
        _session = session,
+       _playbackPreferences =
+           playbackPreferences ?? PlatformPlaybackPreferences.shared,
        super(const SettingsState());
 
   final AuthRepository _authRepository;
   final AuthenticatedSession _session;
+  final PlaybackPreferences _playbackPreferences;
 
   Future<void> load() async {
     emit(state.copyWith(status: SettingsStatus.loading, clearError: true));
@@ -29,6 +35,7 @@ class SettingsCubit extends Cubit<SettingsState> {
               status: SettingsStatus.idle,
               profileId: profile.id,
               pinEnabled: profile.pinEnabled,
+              hlsEnabled: _playbackPreferences.hlsEnabled,
               isLoaded: true,
             ),
           );
@@ -39,6 +46,7 @@ class SettingsCubit extends Cubit<SettingsState> {
         state.copyWith(
           status: SettingsStatus.failure,
           isLoaded: true,
+          hlsEnabled: _playbackPreferences.hlsEnabled,
           errorMessage: 'This profile is no longer saved on this device.',
         ),
       );
@@ -90,6 +98,20 @@ class SettingsCubit extends Cubit<SettingsState> {
       );
       return false;
     }
+  }
+
+  Future<void> setHlsEnabled(bool enabled) async {
+    await _playbackPreferences.setHlsEnabled(enabled);
+    emit(
+      state.copyWith(
+        hlsEnabled: enabled,
+        clearMessage: true,
+        clearError: true,
+        message: enabled
+            ? 'Adaptive streaming is on. It will be used on supported servers the next time media loads.'
+            : 'Adaptive streaming is off.',
+      ),
+    );
   }
 
   void clearMessage() {

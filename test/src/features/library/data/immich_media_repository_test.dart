@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:immichtv/src/core/models/authenticated_session.dart';
+import 'package:immichtv/src/core/repositories/playback_preferences.dart';
 import 'package:immichtv/src/core/models/server_capabilities.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
 import 'package:immichtv/src/core/models/user_profile.dart';
@@ -96,6 +97,7 @@ void main() {
 
     final page = await ImmichMediaRepository(
       dio: Dio()..httpClientAdapter = adapter,
+      playbackPreferences: const _EnabledPlaybackPreferences(),
     ).fetchTimelinePage(session, year: 2025);
 
     expect(
@@ -232,6 +234,19 @@ AuthenticatedSession _session({ServerCapabilities? capabilities}) {
       name: 'Living Room',
     ),
   );
+}
+
+class _EnabledPlaybackPreferences implements PlaybackPreferences {
+  const _EnabledPlaybackPreferences();
+
+  @override
+  bool get hlsEnabled => true;
+
+  @override
+  Future<void> load() async {}
+
+  @override
+  Future<void> setHlsEnabled(bool enabled) async {}
 }
 
 class _RecordingHttpClientAdapter implements HttpClientAdapter {

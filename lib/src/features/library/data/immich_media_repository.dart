@@ -12,14 +12,21 @@ import '../../../core/models/person_summary.dart';
 import '../../../core/models/server_capabilities.dart';
 import '../../../core/network/immich_headers.dart';
 import '../../../core/repositories/media_repository.dart';
+import '../../../core/repositories/playback_preferences.dart';
+import '../../../platform/storage/platform_playback_preferences.dart';
 import '../../mock/data/mock_media_repository.dart';
 
 class ImmichMediaRepository implements MediaRepository {
-  ImmichMediaRepository({required Dio dio})
-    : _dio = dio,
-      _mockMediaRepository = MockMediaRepository();
+  ImmichMediaRepository({
+    required Dio dio,
+    PlaybackPreferences? playbackPreferences,
+  }) : _dio = dio,
+       _playbackPreferences =
+           playbackPreferences ?? PlatformPlaybackPreferences.shared,
+       _mockMediaRepository = MockMediaRepository();
 
   final Dio _dio;
+  final PlaybackPreferences _playbackPreferences;
   final MockMediaRepository _mockMediaRepository;
 
   @override
@@ -561,7 +568,8 @@ class ImmichMediaRepository implements MediaRepository {
       displayUrls: _buildDisplayUrls(session, id, type),
       type: type,
       createdAt: createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
-      hlsUrl: session.capabilities.supports(ServerFeature.hlsVideo) &&
+      hlsUrl: _playbackPreferences.hlsEnabled &&
+              session.capabilities.supports(ServerFeature.hlsVideo) &&
               type.toUpperCase().contains('VIDEO')
           ? session.serverConfig
               .apiEndpoint('assets/$id/video/stream/main.m3u8')

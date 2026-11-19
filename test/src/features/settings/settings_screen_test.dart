@@ -55,7 +55,7 @@ void main() {
         findsOneWidget,
       );
 
-      final onFinder = find.text('On');
+      final onFinder = find.text('On').first;
       await tester.ensureVisible(onFinder);
       await tester.tap(onFinder);
       await tester.pumpAndSettle();
@@ -173,7 +173,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final offFinder = find.text('Off');
+    final offFinder = find.text('Off').first;
     await tester.ensureVisible(offFinder);
     await tester.tap(offFinder);
     await tester.pumpAndSettle();

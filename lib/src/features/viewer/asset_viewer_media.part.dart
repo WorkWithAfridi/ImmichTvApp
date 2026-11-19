@@ -13,6 +13,7 @@ class _ViewerPage extends StatelessWidget {
     required this.authMethod,
     required this.fitMode,
     required this.hdrPlaybackEnabled,
+    this.hlsSessionRepository,
     this.onRegisterVideoScrubberHandle,
     this.onVideoScrubberModeChanged,
   });
@@ -22,6 +23,7 @@ class _ViewerPage extends StatelessWidget {
   final ImmichAuthMethod authMethod;
   final ViewerImageFitMode fitMode;
   final bool? hdrPlaybackEnabled;
+  final HlsSessionRepository? hlsSessionRepository;
   final ValueChanged<_ViewerVideoScrubberHandle?>?
   onRegisterVideoScrubberHandle;
   final ValueChanged<bool>? onVideoScrubberModeChanged;
@@ -42,6 +44,7 @@ class _ViewerPage extends StatelessWidget {
         accessToken: accessToken,
         authMethod: authMethod,
         hdrPlaybackEnabled: hdrEnabled,
+        hlsSessionRepository: hlsSessionRepository,
         onRegisterScrubberHandle: onRegisterVideoScrubberHandle,
         onScrubModeChanged: onVideoScrubberModeChanged,
       );
@@ -108,6 +111,7 @@ class _ViewerVideoPlayer extends StatefulWidget {
     required this.accessToken,
     required this.authMethod,
     required this.hdrPlaybackEnabled,
+    this.hlsSessionRepository,
     this.onRegisterScrubberHandle,
     this.onScrubModeChanged,
   });
@@ -116,6 +120,7 @@ class _ViewerVideoPlayer extends StatefulWidget {
   final String accessToken;
   final ImmichAuthMethod authMethod;
   final bool hdrPlaybackEnabled;
+  final HlsSessionRepository? hlsSessionRepository;
   final ValueChanged<_ViewerVideoScrubberHandle?>? onRegisterScrubberHandle;
   final ValueChanged<bool>? onScrubModeChanged;
 
@@ -153,6 +158,8 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
   int _activeNativeUrlIndex = -1;
   bool _isInitializingNativeSource = false;
   bool _isSwitchingNativeSource = false;
+  String? _hlsPlaylistUrl;
+  String? _hlsSessionId;
 
   @override
   void initState() {
@@ -187,8 +194,49 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
       focusNode.dispose();
     }
     _closeScrubberFocusNode.dispose();
+    _endHlsSession();
     _disposeController();
     super.dispose();
+  }
+
+  Future<void> _beginHlsSession(String playlistUrl) async {
+    final repository = widget.hlsSessionRepository;
+    if (repository == null) {
+      return;
+    }
+    final sessionId = await repository.resolveSessionId(
+      playlistUrl,
+      headers: ImmichHeaders.mediaHeaders(
+        token: widget.accessToken,
+        authMethod: widget.authMethod,
+      ),
+    );
+    if (!mounted || sessionId == null) {
+      return;
+    }
+    _hlsPlaylistUrl = playlistUrl;
+    _hlsSessionId = sessionId;
+  }
+
+  void _endHlsSession() {
+    final repository = widget.hlsSessionRepository;
+    final playlistUrl = _hlsPlaylistUrl;
+    final sessionId = _hlsSessionId;
+    if (repository == null || playlistUrl == null || sessionId == null) {
+      return;
+    }
+    _hlsPlaylistUrl = null;
+    _hlsSessionId = null;
+    unawaited(
+      repository.endSession(
+        mainPlaylistUrl: playlistUrl,
+        sessionId: sessionId,
+        headers: ImmichHeaders.mediaHeaders(
+          token: widget.accessToken,
+          authMethod: widget.authMethod,
+        ),
+      ),
+    );
   }
 
   @override
@@ -309,6 +357,9 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
         await controller.play();
         _isInitializingNativeSource = false;
         _registerScrubberHandle();
+        if (playableUrl.endsWith('.m3u8')) {
+          unawaited(_beginHlsSession(playableUrl));
+        }
         return;
       } catch (error) {
         _isInitializingNativeSource = false;
@@ -340,6 +391,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
       return;
     }
 
+    _endHlsSession();
     _isSwitchingNativeSource = true;
     logger.warning(
       'Native video source ${_activeNativeUrlIndex + 1} failed during playback; trying compatibility source ${nextIndex + 1}. '
@@ -450,6 +502,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
   }
 
   Future<void> _restartPlayer() async {
+    _endHlsSession();
     await _disposeController();
     if (!mounted) {
       return;

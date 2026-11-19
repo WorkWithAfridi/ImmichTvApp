@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,13 +10,16 @@ import 'src/core/config/app_environment.dart';
 import 'src/core/network/immich_dio_factory.dart';
 import 'src/core/repositories/asset_image_repository.dart';
 import 'src/core/repositories/auth_repository.dart';
+import 'src/core/repositories/hls_session_repository.dart';
 import 'src/core/repositories/media_repository.dart';
+import 'src/core/repositories/playback_preferences.dart';
 import 'src/core/repositories/server_repository.dart';
 import 'src/core/services/server_url_normalizer.dart';
 import 'src/features/app_flow/cubit/app_flow_cubit.dart';
 import 'src/features/auth/data/immich_auth_repository.dart';
 import 'src/features/library/data/immich_asset_image_repository.dart';
 import 'src/features/library/data/immich_media_repository.dart';
+import 'src/features/viewer/data/immich_hls_session_repository.dart';
 import 'src/features/marketing/marketing_landing_screen.dart';
 import 'src/features/mock/data/mock_auth_repository.dart';
 import 'src/features/mock/data/mock_media_repository.dart';
@@ -22,6 +27,7 @@ import 'src/features/mock/data/mock_server_repository.dart';
 import 'src/features/onboarding/data/immich_server_capabilities_repository.dart';
 import 'src/features/onboarding/data/immich_server_repository.dart';
 import 'src/platform/browser_navigation.dart';
+import 'src/platform/storage/platform_playback_preferences.dart';
 import 'src/platform/storage/platform_profile_storage.dart';
 import 'src/shared/presentation/app_colors.dart';
 import 'src/shared/presentation/app_radii.dart';
@@ -37,8 +43,15 @@ class ImmichTvApp extends StatelessWidget {
     AssetImageRepository? assetImageRepository,
     ServerRepository? serverRepository,
     MediaRepository? mediaRepository,
+    PlaybackPreferences? playbackPreferences,
+    HlsSessionRepository? hlsSessionRepository,
     bool? useMockServices,
   }) : _environment = AppEnvironment(useMockServices: useMockServices ?? false),
+       _playbackPreferences =
+           playbackPreferences ?? PlatformPlaybackPreferences.shared,
+       _hlsSessionRepository =
+           hlsSessionRepository ??
+           ImmichHlsSessionRepository(dio: ImmichDioFactory.create()),
        _authRepository =
            authRepository ??
            ((useMockServices ?? false)
@@ -64,9 +77,17 @@ class ImmichTvApp extends StatelessWidget {
            mediaRepository ??
            ((useMockServices ?? false)
                ? MockMediaRepository()
-               : ImmichMediaRepository(dio: ImmichDioFactory.create()));
+               : ImmichMediaRepository(
+                   dio: ImmichDioFactory.create(),
+                   playbackPreferences:
+                       playbackPreferences ?? PlatformPlaybackPreferences.shared,
+                 )) {
+    unawaited(_playbackPreferences.load());
+  }
 
   final AppEnvironment _environment;
+  final PlaybackPreferences _playbackPreferences;
+  final HlsSessionRepository _hlsSessionRepository;
   late final AuthRepository _authRepository;
   late final AssetImageRepository _assetImageRepository;
   late final ServerRepository _serverRepository;
@@ -82,6 +103,12 @@ class ImmichTvApp extends StatelessWidget {
       ),
       RepositoryProvider<ServerRepository>.value(value: _serverRepository),
       RepositoryProvider<MediaRepository>.value(value: _mediaRepository),
+      RepositoryProvider<PlaybackPreferences>.value(
+        value: _playbackPreferences,
+      ),
+      RepositoryProvider<HlsSessionRepository>.value(
+        value: _hlsSessionRepository,
+      ),
     ];
 
     if (_shouldShowMarketingLanding) {

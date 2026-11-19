@@ -114,6 +114,7 @@ class _MemoryCard extends StatelessWidget {
         initialIndex: 0,
         accessToken: session.accessToken,
         authMethod: session.authMethod,
+        hlsSessionRepository: context.read<HlsSessionRepository>(),
       ),
       builder: (context, focusState) {
         return AnimatedScale(

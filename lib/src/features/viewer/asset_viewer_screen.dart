@@ -12,6 +12,7 @@ import '../../core/logging/app_logger.dart';
 import '../../core/network/immich_headers.dart';
 import '../../platform/auth/browser_session_bridge.dart';
 import '../../core/repositories/asset_image_repository.dart';
+import '../../core/repositories/hls_session_repository.dart';
 import '../../platform/media/web_authenticated_video_cache.dart';
 import '../../shared/presentation/app_colors.dart';
 import '../../shared/presentation/app_radii.dart';
@@ -34,6 +35,7 @@ class AssetViewerScreen extends StatelessWidget {
     required this.accessToken,
     this.authMethod = ImmichAuthMethod.password,
     this.hdrPlaybackPreference = const HdrPlaybackPreference(),
+    this.hlsSessionRepository,
   });
 
   final List<AssetSummary> assets;
@@ -41,6 +43,7 @@ class AssetViewerScreen extends StatelessWidget {
   final String accessToken;
   final ImmichAuthMethod authMethod;
   final HdrPlaybackPreference hdrPlaybackPreference;
+  final HlsSessionRepository? hlsSessionRepository;
 
   static Future<void> show(
     BuildContext context, {
@@ -49,6 +52,7 @@ class AssetViewerScreen extends StatelessWidget {
     required String accessToken,
     ImmichAuthMethod authMethod = ImmichAuthMethod.password,
     HdrPlaybackPreference hdrPlaybackPreference = const HdrPlaybackPreference(),
+    HlsSessionRepository? hlsSessionRepository,
   }) {
     return Navigator.of(context).push(
       PageRouteBuilder<void>(
@@ -60,6 +64,7 @@ class AssetViewerScreen extends StatelessWidget {
               accessToken: accessToken,
               authMethod: authMethod,
               hdrPlaybackPreference: hdrPlaybackPreference,
+              hlsSessionRepository: hlsSessionRepository,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curvedAnimation = CurvedAnimation(
@@ -89,6 +94,7 @@ class AssetViewerScreen extends StatelessWidget {
         accessToken: accessToken,
         authMethod: authMethod,
         hdrPlaybackPreference: hdrPlaybackPreference,
+        hlsSessionRepository: hlsSessionRepository,
       ),
     );
   }
@@ -99,11 +105,13 @@ class _AssetViewerView extends StatefulWidget {
     required this.accessToken,
     required this.authMethod,
     required this.hdrPlaybackPreference,
+    this.hlsSessionRepository,
   });
 
   final String accessToken;
   final ImmichAuthMethod authMethod;
   final HdrPlaybackPreference hdrPlaybackPreference;
+  final HlsSessionRepository? hlsSessionRepository;
 
   @override
   State<_AssetViewerView> createState() => _AssetViewerViewState();
@@ -300,6 +308,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
                             authMethod: widget.authMethod,
                             fitMode: state.imageFitMode,
                             hdrPlaybackEnabled: _hdrPlaybackEnabled,
+                            hlsSessionRepository: widget.hlsSessionRepository,
                             onRegisterVideoScrubberHandle:
                                 index == state.currentIndex
                                 ? _registerVideoScrubberHandle

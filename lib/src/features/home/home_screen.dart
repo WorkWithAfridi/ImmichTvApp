@@ -14,7 +14,9 @@ import '../../core/models/person_summary.dart';
 import '../../core/models/server_capabilities.dart';
 import '../../core/repositories/asset_image_repository.dart';
 import '../../core/repositories/auth_repository.dart';
+import '../../core/repositories/hls_session_repository.dart';
 import '../../core/repositories/media_repository.dart';
+import '../../core/repositories/playback_preferences.dart';
 import '../../shared/presentation/app_breakpoints.dart';
 import '../../shared/presentation/app_colors.dart';
 import '../../shared/presentation/app_durations.dart';
@@ -947,6 +949,7 @@ class _LibraryContent extends StatelessWidget {
         create: (context) => SettingsCubit(
           authRepository: context.read<AuthRepository>(),
           session: session,
+          playbackPreferences: context.read<PlaybackPreferences>(),
         ),
         child: SettingsScreen(
           session: session,

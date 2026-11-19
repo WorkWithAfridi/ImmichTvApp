@@ -280,6 +280,7 @@ class _DayAssetSection extends StatelessWidget {
                     initialIndex: item.globalIndex,
                     accessToken: session.accessToken,
                     authMethod: session.authMethod,
+                    hlsSessionRepository: context.read<HlsSessionRepository>(),
                   ),
                 );
               },

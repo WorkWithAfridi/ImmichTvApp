@@ -42,6 +42,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final FocusNode _pinSaveFocusNode = FocusNode(
     debugLabel: 'settings.pin.save',
   );
+  final FocusNode _hlsOffFocusNode = FocusNode(debugLabel: 'settings.hls.off');
+  final FocusNode _hlsOnFocusNode = FocusNode(debugLabel: 'settings.hls.on');
   bool _isEnrollingPin = false;
   String? _pinError;
 
@@ -65,6 +67,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _pinOnFocusNode.dispose();
     _pinCancelFocusNode.dispose();
     _pinSaveFocusNode.dispose();
+    _hlsOffFocusNode.dispose();
+    _hlsOnFocusNode.dispose();
     super.dispose();
   }
 
@@ -158,6 +162,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _pinOnFocusNode,
       if (_isEnrollingPin) _pinCancelFocusNode,
       if (_isEnrollingPin) _pinSaveFocusNode,
+      _hlsOffFocusNode,
+      _hlsOnFocusNode,
     ];
     final currentIndex = nodes.indexWhere((node) => node.hasFocus);
     final forward =
@@ -294,6 +300,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onCancel: _cancelEnrollingPin,
                       ),
                     ],
+                    SizedBox(height: _settingsSectionSpacing(context)),
+                    const _SettingsGroupLabel(label: 'PLAYBACK'),
+                    SizedBox(height: _settingsChipSpacing(context)),
+                    Text(
+                      'Adaptive streaming (HLS)',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: AppScale.of(
+                          context,
+                        ).text(20, min: 17, max: 22),
+                      ),
+                    ),
+                    SizedBox(height: _settingsChipSpacing(context) / 2),
+                    Text(
+                      'Alpha Immich feature (v3+). Uses adaptive quality when available and falls back to regular playback.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: AppScale.of(
+                          context,
+                        ).text(14, min: 12, max: 16),
+                      ),
+                    ),
+                    SizedBox(height: _settingsChipSpacing(context)),
+                    _PinToggleSelector(
+                      enabled: state.hlsEnabled,
+                      isBusy: state.isBusy,
+                      offFocusNode: _hlsOffFocusNode,
+                      onFocusNode: _hlsOnFocusNode,
+                      onChanged: (enabled) =>
+                          context.read<SettingsCubit>().setHlsEnabled(enabled),
+                    ),
                     SizedBox(height: _settingsSectionSpacing(context)),
                     const _SettingsGroupLabel(label: 'SERVER'),
                     SizedBox(height: _settingsChipSpacing(context)),

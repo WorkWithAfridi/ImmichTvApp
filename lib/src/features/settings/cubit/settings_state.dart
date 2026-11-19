@@ -7,6 +7,7 @@ class SettingsState extends Equatable {
     this.status = SettingsStatus.idle,
     this.profileId,
     this.pinEnabled = false,
+    this.hlsEnabled = false,
     this.isLoaded = false,
     this.errorMessage,
     this.message,
@@ -15,6 +16,7 @@ class SettingsState extends Equatable {
   final SettingsStatus status;
   final String? profileId;
   final bool pinEnabled;
+  final bool hlsEnabled;
   final bool isLoaded;
   final String? errorMessage;
   final String? message;
@@ -26,6 +28,7 @@ class SettingsState extends Equatable {
     SettingsStatus? status,
     String? profileId,
     bool? pinEnabled,
+    bool? hlsEnabled,
     bool? isLoaded,
     String? errorMessage,
     String? message,
@@ -37,6 +40,7 @@ class SettingsState extends Equatable {
       status: status ?? this.status,
       profileId: clearProfileId ? null : (profileId ?? this.profileId),
       pinEnabled: pinEnabled ?? this.pinEnabled,
+      hlsEnabled: hlsEnabled ?? this.hlsEnabled,
       isLoaded: isLoaded ?? this.isLoaded,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       message: clearMessage ? null : (message ?? this.message),
@@ -48,6 +52,7 @@ class SettingsState extends Equatable {
     status,
     profileId,
     pinEnabled,
+    hlsEnabled,
     isLoaded,
     errorMessage,
     message,

@@ -4,6 +4,7 @@ import 'package:immichtv/src/core/models/saved_profile.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
 import 'package:immichtv/src/core/models/user_profile.dart';
 import 'package:immichtv/src/core/repositories/auth_repository.dart';
+import 'package:immichtv/src/core/repositories/playback_preferences.dart';
 import 'package:immichtv/src/features/settings/cubit/settings_cubit.dart';
 
 void main() {
@@ -46,6 +47,42 @@ void main() {
     expect(cubit.state.pinEnabled, isFalse);
     expect(repository.lastEnabled, isFalse);
   });
+
+  test('HLS toggle persists the preference and updates the state', () async {
+    final preferences = _FakePlaybackPreferences();
+    final cubit = SettingsCubit(
+      authRepository: _FakeAuthRepository(
+        profile: _savedProfile(pinEnabled: false),
+      ),
+      session: _session(),
+      playbackPreferences: preferences,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.load();
+    expect(cubit.state.hlsEnabled, isFalse);
+
+    await cubit.setHlsEnabled(true);
+    expect(cubit.state.hlsEnabled, isTrue);
+    expect(preferences.hlsEnabled, isTrue);
+
+    await cubit.setHlsEnabled(false);
+    expect(cubit.state.hlsEnabled, isFalse);
+    expect(preferences.hlsEnabled, isFalse);
+  });
+}
+
+class _FakePlaybackPreferences implements PlaybackPreferences {
+  bool _hlsEnabled = false;
+
+  @override
+  bool get hlsEnabled => _hlsEnabled;
+
+  @override
+  Future<void> load() async {}
+
+  @override
+  Future<void> setHlsEnabled(bool enabled) async => _hlsEnabled = enabled;
 }
 
 class _FakeAuthRepository implements AuthRepository {
