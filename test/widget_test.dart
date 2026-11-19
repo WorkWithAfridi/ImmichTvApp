@@ -41,13 +41,8 @@ void main() {
 
     await _settleAppFlow(tester);
 
-    expect(
-      find.text('Choose how you want to type during setup'),
-      findsOneWidget,
-    );
     expect(find.text('Screen keyboard'), findsOneWidget);
     expect(find.text('Device keyboard'), findsOneWidget);
-    expect(find.text('Continue'), findsOneWidget);
   });
 
   testWidgets('shows the saved profile picker when profiles exist', (
@@ -862,10 +857,8 @@ Future<void> _advancePastInputSelection(
   await tester.tap(optionFinder);
   await tester.pumpAndSettle();
 
-  final continueFinder = find.text('Continue');
-  await tester.ensureVisible(continueFinder);
-  await tester.tap(continueFinder);
-  await tester.pumpAndSettle();
+  // Selecting a card immediately advances to the onboarding form; the
+  // selector no longer has a separate Continue button.
 }
 
 Future<void> _setFieldValueByLabel(
