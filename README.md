@@ -53,7 +53,7 @@ Immich TV is a TV-first, read-only client for browsing photos and videos on Andr
 
 ## Status
 
-Actively developed and usable as a focused TV browsing client. The current release line is **1.5.0**.
+Actively developed and usable as a focused TV browsing client. The current release line is **1.6.0**.
 
 ## Server Compatibility
 
