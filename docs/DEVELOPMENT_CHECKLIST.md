@@ -46,6 +46,7 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [x] Fetch and display albums.
 - [x] Fetch and display favorites.
 - [x] Fetch and display server-capable memories ("On this day" and birthdays).
+- [x] Browse photos by city using the Places API when enabled on the server.
 - [x] Add asset grid virtualization and pagination.
 - [x] Add thumbnail loading and caching.
 - [x] Build loading, empty, and error states for each tab.
@@ -60,6 +61,7 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [x] Add slideshow playback controls, duration settings, and pause/resume.
 - [x] Continue slideshow playback by loading the next page near the end of the loaded assets.
 - [x] Add screen-safe overlays for metadata and transport controls.
+- [x] Add an asset info overlay with EXIF, metadata, and OCR text.
 
 ## Phase 6: Performance and Reliability
 

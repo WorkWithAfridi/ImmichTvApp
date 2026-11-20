@@ -28,10 +28,11 @@ Current product direction:
 - Protect saved profiles with an optional 4-digit PIN, configurable from Settings
 - Browse timeline assets in a TV-optimized layout
 - Jump between years from a horizontal year rail
-- Open albums, people, favorites, and memories
+- Open albums, people, favorites, memories, and places
 - Browse person-specific media from the People tab
 - Revisit "On this day" and birthday memories as a fullscreen gallery
 - View photos and videos fullscreen, with adaptive HLS streaming on supported servers
+- Press `i` in the viewer for a read-only info panel with EXIF data, metadata, and OCR text
 - Start slideshow playback directly from the viewer, continuously loading more photos as it goes
 - Use a layout tuned for TV remotes, keyboards, and pointer input
 - Detect the connected Immich server's version and enabled features so newer APIs are used only when supported
