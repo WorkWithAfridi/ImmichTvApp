@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,14 +22,12 @@ import 'src/features/library/data/immich_asset_detail_repository.dart';
 import 'src/features/library/data/immich_asset_image_repository.dart';
 import 'src/features/library/data/immich_media_repository.dart';
 import 'src/features/viewer/data/immich_hls_session_repository.dart';
-import 'src/features/marketing/marketing_landing_screen.dart';
 import 'src/features/mock/data/mock_asset_detail_repository.dart';
 import 'src/features/mock/data/mock_auth_repository.dart';
 import 'src/features/mock/data/mock_media_repository.dart';
 import 'src/features/mock/data/mock_server_repository.dart';
 import 'src/features/onboarding/data/immich_server_capabilities_repository.dart';
 import 'src/features/onboarding/data/immich_server_repository.dart';
-import 'src/platform/browser_navigation.dart';
 import 'src/platform/storage/platform_playback_preferences.dart';
 import 'src/platform/storage/platform_profile_storage.dart';
 import 'src/shared/presentation/app_colors.dart';
@@ -125,13 +122,6 @@ class ImmichTvApp extends StatelessWidget {
         value: _hlsSessionRepository,
       ),
     ];
-
-    if (_shouldShowMarketingLanding) {
-      return _MarketingSiteApp(
-        repositories: appRepositories,
-        appHome: _AdaptiveAppEntry(authRepository: _authRepository),
-      );
-    }
 
     final baseTextTheme = GoogleFonts.interTextTheme().copyWith(
       displayLarge: GoogleFonts.inter(
@@ -319,16 +309,6 @@ class ImmichTvApp extends StatelessWidget {
     );
   }
 
-  bool get _shouldShowMarketingLanding {
-    if (!kIsWeb) {
-      return false;
-    }
-
-    final normalizedPath = Uri.base.path.toLowerCase();
-    return normalizedPath.isEmpty ||
-        normalizedPath == '/' ||
-        normalizedPath == '/index.html';
-  }
 }
 
 class _AdaptiveAppEntry extends StatelessWidget {
@@ -357,65 +337,6 @@ class _AdaptiveViewportGateState extends State<_AdaptiveViewportGate> {
     return BlocProvider(
       create: (_) => AppFlowCubit(widget.authRepository)..initialize(),
       child: const AppShell(),
-    );
-  }
-}
-
-class _MarketingSiteApp extends StatelessWidget {
-  const _MarketingSiteApp({
-    required this.repositories,
-    required this.appHome,
-  });
-
-  final List<RepositoryProvider> repositories;
-  final Widget appHome;
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
-      providers: repositories,
-      child: MaterialApp(
-        title: 'Immich TV',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.primary,
-            surface: AppColors.surface,
-            onSurface: AppColors.textPrimary,
-          ),
-          scaffoldBackgroundColor: AppColors.background,
-        ),
-        home: _MarketingSiteGate(appHome: appHome),
-      ),
-    );
-  }
-}
-
-class _MarketingSiteGate extends StatefulWidget {
-  const _MarketingSiteGate({required this.appHome});
-
-  final Widget appHome;
-
-  @override
-  State<_MarketingSiteGate> createState() => _MarketingSiteGateState();
-}
-
-class _MarketingSiteGateState extends State<_MarketingSiteGate> {
-  bool _showWebApp = false;
-
-  @override
-  Widget build(BuildContext context) {
-    if (_showWebApp) {
-      return widget.appHome;
-    }
-
-    return MarketingLandingScreen(
-      onOpenWebApp: () {
-        pushBrowserPath('/app');
-        setState(() => _showWebApp = true);
-      },
     );
   }
 }

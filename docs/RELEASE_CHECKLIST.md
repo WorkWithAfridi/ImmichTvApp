@@ -41,7 +41,7 @@ Capture at 1280 x 720 (TV viewport) and at a phone viewport where relevant:
 
 ## Other platforms
 
-- [ ] Web: marketing page at `/`, app at `/app`, sign-in and playback work.
+- [ ] Web: app loads directly at `/`, sign-in and playback work.
 - [ ] Windows, macOS, Linux: desktop builds launch and navigate with keyboard/mouse.
 - [ ] Android mobile: portrait/phone layout remains usable.
 
