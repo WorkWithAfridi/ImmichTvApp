@@ -1,5 +1,15 @@
 # Release Notes
 
+## 1.7.0+23
+
+Highlights for this release:
+
+- **Video mute control** — a focusable mute/unmute button sits beside play/pause and applies to native and web playback.
+- **Remote-first slideshow setup** — rebuilt as a D-pad-driven dialog with a single horizontally scrolling interval row, explicit focus states, and a full-width Cancel button.
+- **More intervals** — 2, 3, 5, 8, 12, 20, 30, 45, and 60 seconds, with the last choice remembered.
+- **Leaner web build** — the embedded marketing landing page and its `/app` gate were removed; the app now loads directly at `/`.
+- **Docs and QA** — release checklist and web metadata updated to match the streamlined app.
+
 ## 1.6.0+22
 
 Highlights for this release:
