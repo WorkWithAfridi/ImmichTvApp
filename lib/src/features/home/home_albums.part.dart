@@ -239,9 +239,42 @@ class _AlbumBrowserState extends State<_AlbumBrowser> {
       onLoadMore: _loadMoreAlbumAssets,
       onOpenSidebar: widget.onOpenSidebar,
       onMoveLeftFromGrid: () => _selectedAlbumFocusNode.requestFocus(),
+      slideshowPageLoader: _fetchMoreForSlideshow,
+      hasMoreSlideshowPages: _albumAssetsNextPage?.isNotEmpty ?? false,
       headingTitle: selectedAlbum.name,
       headingSubtitle: '${_albumAssets.length} assets',
     );
+  }
+
+  Future<SlideshowPage> _fetchMoreForSlideshow() async {
+    final album = _selectedAlbum;
+    final page = _albumAssetsNextPage;
+    if (album == null ||
+        page == null ||
+        page.isEmpty ||
+        _isLoadingAlbumAssets) {
+      return const SlideshowPage(items: [], hasMore: false);
+    }
+
+    try {
+      final response = await context.read<MediaRepository>().fetchAlbumAssetsPage(
+        widget.session,
+        albumId: album.id,
+        sortOrder: widget.sortOrder,
+        page: page,
+      );
+      final fresh = _dedupeAlbumAssets(_albumAssets, response.items);
+      if (!mounted || _selectedAlbum?.id != album.id) {
+        return const SlideshowPage(items: [], hasMore: false);
+      }
+      setState(() {
+        _albumAssets = [..._albumAssets, ...fresh];
+        _albumAssetsNextPage = response.nextPage;
+      });
+      return SlideshowPage(items: fresh, hasMore: response.hasMore);
+    } catch (_) {
+      return const SlideshowPage(items: [], hasMore: false);
+    }
   }
 
   Future<void> _loadMoreAlbumAssets() async {

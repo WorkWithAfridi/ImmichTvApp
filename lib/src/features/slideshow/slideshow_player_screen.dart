@@ -12,6 +12,7 @@ import '../../shared/presentation/app_spacing.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
 import '../../shared/presentation/widgets/loading_skeleton.dart';
 import '../../shared/presentation/widgets/tv_focusable.dart';
+import 'slideshow_page_loader.dart';
 
 class SlideshowPlayerScreen extends StatefulWidget {
   const SlideshowPlayerScreen({
@@ -22,6 +23,9 @@ class SlideshowPlayerScreen extends StatefulWidget {
     required this.initialDurationSeconds,
     this.initialIndex = 0,
     this.shuffle = false,
+    this.pageLoader,
+    this.hasMorePages = false,
+    this.prefetchThreshold = 5,
   });
 
   final List<AssetSummary> assets;
@@ -30,6 +34,9 @@ class SlideshowPlayerScreen extends StatefulWidget {
   final int initialDurationSeconds;
   final int initialIndex;
   final bool shuffle;
+  final SlideshowPageLoader? pageLoader;
+  final bool hasMorePages;
+  final int prefetchThreshold;
 
   static Future<void> show(
     BuildContext context, {
@@ -39,6 +46,9 @@ class SlideshowPlayerScreen extends StatefulWidget {
     required int initialDurationSeconds,
     int initialIndex = 0,
     bool shuffle = false,
+    SlideshowPageLoader? pageLoader,
+    bool hasMorePages = false,
+    int prefetchThreshold = 5,
   }) {
     return Navigator.of(context).push(
       PageRouteBuilder<void>(
@@ -51,6 +61,9 @@ class SlideshowPlayerScreen extends StatefulWidget {
               initialDurationSeconds: initialDurationSeconds,
               initialIndex: initialIndex,
               shuffle: shuffle,
+              pageLoader: pageLoader,
+              hasMorePages: hasMorePages,
+              prefetchThreshold: prefetchThreshold,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -65,6 +78,8 @@ class SlideshowPlayerScreen extends StatefulWidget {
 
 class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
   late final List<AssetSummary> _assets;
+  late bool _hasMore;
+  bool _isLoadingMore = false;
   late int _durationSeconds;
   Timer? _advanceTimer;
   int _currentIndex = 0;
@@ -80,6 +95,7 @@ class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
     if (widget.shuffle) {
       _assets.shuffle(Random(17));
     }
+    _hasMore = widget.pageLoader != null && widget.hasMorePages;
     _durationSeconds = widget.initialDurationSeconds;
     _currentIndex = _resolveInitialIndex(widget.initialIndex);
     _slideshowFocusNode = FocusNode(debugLabel: 'slideshow-surface');
@@ -283,17 +299,63 @@ class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
     return null;
   }
 
-  void _moveTo(int index) {
+  Future<void> _moveTo(int index) async {
     if (_assets.isEmpty) {
       return;
     }
 
-    final boundedIndex =
-        (index % _assets.length + _assets.length) % _assets.length;
-    setState(() {
-      _currentIndex = boundedIndex;
-    });
+    var target = index;
+    while (target >= _assets.length && _hasMore) {
+      if (!await _loadMore()) {
+        break;
+      }
+    }
+
+    // Only wrap around once the source has no more pages to offer.
+    if (target >= _assets.length) {
+      target = 0;
+    }
+
+    if (mounted) {
+      setState(() => _currentIndex = target);
+    }
     _scheduleAdvance();
+    _maybePrefetch();
+  }
+
+  Future<bool> _loadMore() async {
+    final loader = widget.pageLoader;
+    if (_isLoadingMore || loader == null || !_hasMore) {
+      return false;
+    }
+
+    _isLoadingMore = true;
+    try {
+      final page = await loader();
+      final existingIds = _assets.map((asset) => asset.id).toSet();
+      final fresh = page.items
+          .where((asset) => !existingIds.contains(asset.id))
+          .toList();
+      if (widget.shuffle && fresh.isNotEmpty) {
+        fresh.shuffle(Random());
+      }
+      _assets.addAll(fresh);
+      _hasMore = page.hasMore && page.items.isNotEmpty;
+      return fresh.isNotEmpty;
+    } catch (_) {
+      return false;
+    } finally {
+      _isLoadingMore = false;
+    }
+  }
+
+  void _maybePrefetch() {
+    if (!_hasMore || _isLoadingMore || widget.pageLoader == null) {
+      return;
+    }
+    if (_assets.length - _currentIndex <= widget.prefetchThreshold) {
+      unawaited(_loadMore());
+    }
   }
 
   void _togglePlayback() {
@@ -310,7 +372,7 @@ class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
 
   void _scheduleAdvance() {
     _advanceTimer?.cancel();
-    if (!_isPlaying || _assets.length < 2) {
+    if (!_isPlaying || (_assets.length < 2 && !_hasMore)) {
       return;
     }
 
@@ -318,7 +380,7 @@ class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
       if (!mounted) {
         return;
       }
-      _moveTo(_currentIndex + 1);
+      unawaited(_moveTo(_currentIndex + 1));
     });
   }
 

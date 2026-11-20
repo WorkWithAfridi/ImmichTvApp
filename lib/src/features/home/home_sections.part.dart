@@ -116,6 +116,9 @@ class _TimelineSectionView extends StatelessWidget {
               allAssets: assets,
               primaryContentFocusNode: primaryContentFocusNode,
               onOpenSidebar: onOpenSidebar,
+              slideshowPageLoader: () =>
+                  context.read<LibraryCubit>().fetchMoreForSlideshow(),
+              hasMoreSlideshowPages: hasMore,
             ),
           );
         },
@@ -207,6 +210,9 @@ class _AssetSectionView extends StatelessWidget {
       primaryContentFocusNode: primaryContentFocusNode,
       onLoadMore: () => context.read<LibraryCubit>().loadMore(),
       onOpenSidebar: onOpenSidebar,
+      slideshowPageLoader: () =>
+          context.read<LibraryCubit>().fetchMoreForSlideshow(),
+      hasMoreSlideshowPages: hasMore,
     );
   }
 }
@@ -219,6 +225,8 @@ class _DayAssetSection extends StatelessWidget {
     required this.onOpenSidebar,
     this.primaryContentFocusNode,
     this.onMoveLeftFromGrid,
+    this.slideshowPageLoader,
+    this.hasMoreSlideshowPages = false,
   });
 
   final AuthenticatedSession session;
@@ -227,6 +235,8 @@ class _DayAssetSection extends StatelessWidget {
   final FocusNode? primaryContentFocusNode;
   final VoidCallback onOpenSidebar;
   final VoidCallback? onMoveLeftFromGrid;
+  final SlideshowPageLoader? slideshowPageLoader;
+  final bool hasMoreSlideshowPages;
 
   @override
   Widget build(BuildContext context) {
@@ -284,6 +294,8 @@ class _DayAssetSection extends StatelessWidget {
                     accessToken: session.accessToken,
                     authMethod: session.authMethod,
                     hlsSessionRepository: context.read<HlsSessionRepository>(),
+                    slideshowPageLoader: slideshowPageLoader,
+                    hasMoreSlideshowPages: hasMoreSlideshowPages,
                   ),
                 );
               },
@@ -308,6 +320,8 @@ class _GroupedAssetSectionList extends StatelessWidget {
     this.onMoveLeftFromGrid,
     this.headingTitle,
     this.headingSubtitle,
+    this.slideshowPageLoader,
+    this.hasMoreSlideshowPages = false,
   });
 
   final AuthenticatedSession session;
@@ -321,6 +335,8 @@ class _GroupedAssetSectionList extends StatelessWidget {
   final VoidCallback? onMoveLeftFromGrid;
   final String? headingTitle;
   final String? headingSubtitle;
+  final SlideshowPageLoader? slideshowPageLoader;
+  final bool hasMoreSlideshowPages;
 
   @override
   Widget build(BuildContext context) {
@@ -385,6 +401,8 @@ class _GroupedAssetSectionList extends StatelessWidget {
               primaryContentFocusNode: primaryContentFocusNode,
               onOpenSidebar: onOpenSidebar,
               onMoveLeftFromGrid: onMoveLeftFromGrid,
+              slideshowPageLoader: slideshowPageLoader,
+              hasMoreSlideshowPages: hasMoreSlideshowPages,
             ),
           );
         },

@@ -20,6 +20,7 @@ import '../../shared/presentation/app_spacing.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
 import '../../shared/presentation/widgets/rebuild_tracker.dart';
 import '../../shared/presentation/widgets/tv_focusable.dart';
+import '../slideshow/slideshow_page_loader.dart';
 import '../slideshow/slideshow_player_screen.dart';
 import 'cubit/asset_viewer_cubit.dart';
 import 'hdr_playback_preference.dart';
@@ -37,6 +38,8 @@ class AssetViewerScreen extends StatelessWidget {
     this.authMethod = ImmichAuthMethod.password,
     this.hdrPlaybackPreference = const HdrPlaybackPreference(),
     this.hlsSessionRepository,
+    this.slideshowPageLoader,
+    this.hasMoreSlideshowPages = false,
   });
 
   final List<AssetSummary> assets;
@@ -45,6 +48,8 @@ class AssetViewerScreen extends StatelessWidget {
   final ImmichAuthMethod authMethod;
   final HdrPlaybackPreference hdrPlaybackPreference;
   final HlsSessionRepository? hlsSessionRepository;
+  final SlideshowPageLoader? slideshowPageLoader;
+  final bool hasMoreSlideshowPages;
 
   static Future<void> show(
     BuildContext context, {
@@ -54,6 +59,8 @@ class AssetViewerScreen extends StatelessWidget {
     ImmichAuthMethod authMethod = ImmichAuthMethod.password,
     HdrPlaybackPreference hdrPlaybackPreference = const HdrPlaybackPreference(),
     HlsSessionRepository? hlsSessionRepository,
+    SlideshowPageLoader? slideshowPageLoader,
+    bool hasMoreSlideshowPages = false,
   }) {
     return Navigator.of(context).push(
       PageRouteBuilder<void>(
@@ -66,6 +73,8 @@ class AssetViewerScreen extends StatelessWidget {
               authMethod: authMethod,
               hdrPlaybackPreference: hdrPlaybackPreference,
               hlsSessionRepository: hlsSessionRepository,
+              slideshowPageLoader: slideshowPageLoader,
+              hasMoreSlideshowPages: hasMoreSlideshowPages,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curvedAnimation = CurvedAnimation(
@@ -96,6 +105,8 @@ class AssetViewerScreen extends StatelessWidget {
         authMethod: authMethod,
         hdrPlaybackPreference: hdrPlaybackPreference,
         hlsSessionRepository: hlsSessionRepository,
+        slideshowPageLoader: slideshowPageLoader,
+        hasMoreSlideshowPages: hasMoreSlideshowPages,
       ),
     );
   }
@@ -107,12 +118,16 @@ class _AssetViewerView extends StatefulWidget {
     required this.authMethod,
     required this.hdrPlaybackPreference,
     this.hlsSessionRepository,
+    this.slideshowPageLoader,
+    this.hasMoreSlideshowPages = false,
   });
 
   final String accessToken;
   final ImmichAuthMethod authMethod;
   final HdrPlaybackPreference hdrPlaybackPreference;
   final HlsSessionRepository? hlsSessionRepository;
+  final SlideshowPageLoader? slideshowPageLoader;
+  final bool hasMoreSlideshowPages;
 
   @override
   State<_AssetViewerView> createState() => _AssetViewerViewState();
@@ -555,6 +570,8 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
       authMethod: widget.authMethod,
       initialDurationSeconds: durationSeconds,
       initialIndex: initialSlideshowIndex >= 0 ? initialSlideshowIndex : 0,
+      pageLoader: widget.slideshowPageLoader,
+      hasMorePages: widget.hasMoreSlideshowPages,
     );
   }
 

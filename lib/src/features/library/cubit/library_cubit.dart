@@ -10,6 +10,7 @@ import '../../../core/models/authenticated_session.dart';
 import '../../../core/models/media_page.dart';
 import '../../../core/network/network_failure.dart';
 import '../../../core/repositories/media_repository.dart';
+import '../../slideshow/slideshow_page_loader.dart';
 import 'library_state.dart';
 
 class LibraryCubit extends Cubit<LibraryState> {
@@ -253,6 +254,55 @@ class LibraryCubit extends Cubit<LibraryState> {
         error,
       );
     }
+  }
+
+  /// Fetches the next page for a running slideshow and returns only the new
+  /// assets. The library state is updated as well so returning to the grid
+  /// shows the same assets the slideshow just played.
+  Future<SlideshowPage> fetchMoreForSlideshow() async {
+    try {
+      switch (state.selectedTab) {
+        case LibraryTab.timeline:
+          final page = state.timelineNextPage;
+          if (page == null || page.isEmpty) break;
+          final response = await _mediaRepository.fetchTimelinePage(
+            _session,
+            page: page,
+            year: state.selectedTimelineYear,
+          );
+          final fresh = _dedupeAssets(state.timeline, response).cast<AssetSummary>();
+          _emitLoaded(
+            state.copyWith(
+              timeline: [...state.timeline, ...fresh],
+              timelineNextPage: response.nextPage,
+              clearTimelineNextPage: response.nextPage == null,
+            ),
+          );
+          return SlideshowPage(items: fresh, hasMore: response.hasMore);
+        case LibraryTab.favorites:
+          final page = state.favoritesNextPage;
+          if (page == null || page.isEmpty) break;
+          final response = await _mediaRepository.fetchFavoritesPage(
+            _session,
+            page: page,
+            sortOrder: state.favoritesSortOrder,
+          );
+          final fresh = _dedupeAssets(state.favorites, response).cast<AssetSummary>();
+          _emitLoaded(
+            state.copyWith(
+              favorites: [...state.favorites, ...fresh],
+              favoritesNextPage: response.nextPage,
+              clearFavoritesNextPage: response.nextPage == null,
+            ),
+          );
+          return SlideshowPage(items: fresh, hasMore: response.hasMore);
+        default:
+          break;
+      }
+    } catch (_) {
+      // The slideshow falls back to wrapping when paging is unavailable.
+    }
+    return const SlideshowPage(items: [], hasMore: false);
   }
 
   Future<void> loadMore() async {

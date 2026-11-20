@@ -35,6 +35,7 @@ import '../library/cubit/library_cubit.dart';
 import '../library/cubit/library_state.dart';
 import '../settings/cubit/settings_cubit.dart';
 import '../settings/cubit/settings_state.dart';
+import '../slideshow/slideshow_page_loader.dart';
 import '../viewer/asset_viewer_screen.dart';
 
 part 'home_sections.part.dart';

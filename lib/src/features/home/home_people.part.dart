@@ -239,9 +239,45 @@ class _PeopleBrowserState extends State<_PeopleBrowser> {
       onLoadMore: _loadMorePersonAssets,
       onOpenSidebar: widget.onOpenSidebar,
       onMoveLeftFromGrid: () => _selectedPersonFocusNode.requestFocus(),
+      slideshowPageLoader: _fetchMoreForSlideshow,
+      hasMoreSlideshowPages: _personAssetsNextPage?.isNotEmpty ?? false,
       headingTitle: selectedPerson.name,
       headingSubtitle: '${_personAssets.length} assets',
     );
+  }
+
+  Future<SlideshowPage> _fetchMoreForSlideshow() async {
+    final person = _selectedPerson;
+    final page = _personAssetsNextPage;
+    if (person == null ||
+        page == null ||
+        page.isEmpty ||
+        _isLoadingPersonAssets) {
+      return const SlideshowPage(items: [], hasMore: false);
+    }
+
+    try {
+      final response = await context.read<MediaRepository>().fetchPersonAssetsPage(
+        widget.session,
+        personId: person.id,
+        sortOrder: widget.sortOrder,
+        page: page,
+      );
+      final existingIds = _personAssets.map((asset) => asset.id).toSet();
+      final fresh = response.items
+          .where((asset) => !existingIds.contains(asset.id))
+          .toList();
+      if (!mounted || _selectedPerson?.id != person.id) {
+        return const SlideshowPage(items: [], hasMore: false);
+      }
+      setState(() {
+        _personAssets = [..._personAssets, ...fresh];
+        _personAssetsNextPage = response.nextPage;
+      });
+      return SlideshowPage(items: fresh, hasMore: response.hasMore);
+    } catch (_) {
+      return const SlideshowPage(items: [], hasMore: false);
+    }
   }
 
   Future<void> _loadMorePersonAssets() async {
