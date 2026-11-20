@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'src/app_shell.dart';
 import 'src/core/config/app_environment.dart';
 import 'src/core/network/immich_dio_factory.dart';
+import 'src/core/performance/rebuild_metrics.dart';
 import 'src/core/repositories/asset_image_repository.dart';
 import 'src/core/repositories/auth_repository.dart';
 import 'src/core/repositories/hls_session_repository.dart';
@@ -30,6 +31,7 @@ import 'src/platform/browser_navigation.dart';
 import 'src/platform/storage/platform_playback_preferences.dart';
 import 'src/platform/storage/platform_profile_storage.dart';
 import 'src/shared/presentation/app_colors.dart';
+import 'src/shared/presentation/widgets/performance_overlay.dart';
 import 'src/shared/presentation/app_radii.dart';
 
 void runImmichTvApp() {
@@ -295,7 +297,11 @@ class ImmichTvApp extends StatelessWidget {
             style: TextButton.styleFrom(foregroundColor: AppColors.textPrimary),
           ),
         ),
-        home: _AdaptiveAppEntry(authRepository: _authRepository),
+        home: RebuildMetrics.isEnabled
+            ? ImmichPerformanceOverlay(
+                child: _AdaptiveAppEntry(authRepository: _authRepository),
+              )
+            : _AdaptiveAppEntry(authRepository: _authRepository),
       ),
     );
   }

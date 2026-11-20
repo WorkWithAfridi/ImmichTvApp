@@ -4,14 +4,17 @@ import 'dart:collection';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import '../../../core/config/performance_config.dart';
 import '../../../core/models/immich_auth_method.dart';
 import '../../../core/network/immich_headers.dart';
 import '../../../core/repositories/asset_image_repository.dart';
 
 class ImmichAssetImageRepository implements AssetImageRepository {
-  ImmichAssetImageRepository();
+  ImmichAssetImageRepository({
+    int maxPrefetchedEntries = PerformanceConfig.defaultPrefetchWindow,
+  }) : _maxPrefetchedEntries = maxPrefetchedEntries;
 
-  static const _maxPrefetchedEntries = 10;
+  final int _maxPrefetchedEntries;
   final Queue<_PrefetchedImageEntry> _prefetchedEntries =
       ListQueue<_PrefetchedImageEntry>();
   final Set<String> _inFlightUrls = <String>{};

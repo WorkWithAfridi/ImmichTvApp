@@ -241,6 +241,13 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    return RebuildTracker(
+      surface: 'viewer.video',
+      child: _buildVideoSurface(),
+    );
+  }
+
+  Widget _buildVideoSurface() {
     final controller = _controller;
     if (controller == null || _initializeFuture == null) {
       return _ViewerVideoLoadingSurface(

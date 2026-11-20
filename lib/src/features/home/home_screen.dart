@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../core/config/performance_config.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/models/album_summary.dart';
 import '../../core/models/asset_sort_order.dart';
@@ -27,6 +28,7 @@ import '../../shared/presentation/app_spacing.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
 import '../../shared/presentation/widgets/loading_skeleton.dart';
 import '../../shared/presentation/widgets/on_screen_keyboard/on_screen_keyboard.dart';
+import '../../shared/presentation/widgets/rebuild_tracker.dart';
 import '../../shared/presentation/widgets/tv_focusable.dart';
 import '../app_flow/cubit/app_flow_cubit.dart';
 import '../library/cubit/library_cubit.dart';
@@ -276,6 +278,13 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return RebuildTracker(
+      surface: 'home.sidebar',
+      child: _buildSidebar(context),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context) {
     final scale = AppScale.of(context);
 
     return Shortcuts(
@@ -877,6 +886,13 @@ class _LibraryContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return RebuildTracker(
+      surface: 'home.content',
+      child: _buildSelectedContent(context),
+    );
+  }
+
+  Widget _buildSelectedContent(BuildContext context) {
     return switch (state.selectedTab) {
       LibraryTab.timeline => _TimelineSectionView(
         session: session,

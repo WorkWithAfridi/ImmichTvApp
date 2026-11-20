@@ -667,22 +667,25 @@ double _responsiveAlbumRailWidth(double contentWidth, AppScale scale) {
 
 List<List<String>> _nearbyThumbnailUrls(
   List<AssetSummary> assets,
-  int centerIndex,
-) {
-  const offsets = [-2, -1, 1, 2, 3];
+  int centerIndex, {
+  int window = PerformanceConfig.minPrefetchWindow,
+}) {
   final nearby = <List<String>>[];
+  final reach = window ~/ 2;
 
-  for (final offset in offsets) {
-    final index = centerIndex + offset;
-    if (index < 0 || index >= assets.length) {
-      continue;
-    }
+  for (var distance = 1; distance <= reach; distance++) {
+    for (final offset in <int>[-distance, distance]) {
+      final index = centerIndex + offset;
+      if (index < 0 || index >= assets.length) {
+        continue;
+      }
 
-    final thumbnails = assets[index].thumbnailUrls;
-    if (thumbnails.isEmpty) {
-      continue;
+      final thumbnails = assets[index].thumbnailUrls;
+      if (thumbnails.isEmpty) {
+        continue;
+      }
+      nearby.add(thumbnails);
     }
-    nearby.add(thumbnails);
   }
 
   return nearby;

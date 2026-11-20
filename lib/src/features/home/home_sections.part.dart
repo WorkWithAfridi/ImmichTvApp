@@ -273,6 +273,9 @@ class _DayAssetSection extends StatelessWidget {
                   prefetchUrls: _nearbyThumbnailUrls(
                     allAssets,
                     item.globalIndex,
+                    window: PerformanceConfig.prefetchWindowForCrossAxisCount(
+                      crossAxisCount,
+                    ),
                   ),
                   onPressed: () => AssetViewerScreen.show(
                     context,
@@ -467,6 +470,10 @@ class _AssetTileState extends State<_AssetTile> {
 
   @override
   Widget build(BuildContext context) {
+    return RebuildTracker(surface: 'home.assetTile', child: _buildTile());
+  }
+
+  Widget _buildTile() {
     final scale = AppScale.of(context);
     final tile = TvFocusable(
       focusNode: widget.focusNode,
