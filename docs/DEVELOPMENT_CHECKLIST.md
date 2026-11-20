@@ -66,7 +66,8 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [x] Optimize thumbnail cache strategy and prefetching.
 - [x] Add retry behavior and offline-friendly handling for intermittent networks.
 - [x] Detect server version and enabled Immich features, and gate unsupported APIs.
-- [ ] Profile rebuild frequency in key BLoCs and widget trees.
+- [x] Add rebuild counters and an opt-in performance HUD for key surfaces.
+- [ ] Analyze rebuild counts and tune prefetching on real TV hardware.
 - [x] Add integration tests for boot, login, browse, and sign-out flows.
 
 ## Phase 7: Platform Packaging and Release Readiness
@@ -75,7 +76,7 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [ ] Review Android mobile ergonomics for optional handheld support.
 - [ ] Validate web deployment behavior for hosted TV browsers and desktop browsers.
 - [ ] Verify desktop builds on macOS, Windows, and Linux.
-- [ ] Add release versioning, app icons, screenshots, and distribution notes.
+- [x] Add release versioning, screenshots, and distribution notes (see `docs/RELEASING.md`).
 - [ ] Prepare a short QA checklist per platform before public testing.
 
 ## Immediate Next Slice

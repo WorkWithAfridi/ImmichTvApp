@@ -62,7 +62,7 @@ Memories use `GET /memories` when the server supports it. Adaptive HLS video is 
 
 ## Current Version
 
-- App version: `1.4.5+20`
+- App version: `1.5.0+21`
 
 ## Getting Started
 
