@@ -11,6 +11,7 @@ import 'package:immichtv/src/core/models/immich_auth_method.dart';
 import 'package:immichtv/src/core/models/media_page.dart';
 import 'package:immichtv/src/core/models/memory_summary.dart';
 import 'package:immichtv/src/core/models/person_summary.dart';
+import 'package:immichtv/src/core/models/place_summary.dart';
 import 'package:immichtv/src/core/models/saved_profile.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
 import 'package:immichtv/src/core/models/server_validation_result.dart';
@@ -849,6 +850,53 @@ void main() {
     expect(_findAssetThumbnail('memory-b-asset'), findsOneWidget);
   });
 
+  testWidgets('shows places grouped by city with a photo grid', (tester) async {
+    tester.view.physicalSize = const Size(1100, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final preview = AssetSummary(
+      id: 'place-asset-1',
+      thumbnailUrls: [
+        'https://photos.example.com/api/assets/place-asset-1/thumbnail?size=preview',
+      ],
+      displayUrls: [
+        'https://photos.example.com/api/assets/place-asset-1/original',
+      ],
+      type: 'IMAGE',
+      createdAt: DateTime.utc(2025, 6, 1),
+      city: 'Lisbon',
+      country: 'Portugal',
+    );
+    final place = PlaceSummary(
+      id: 'Lisbon|Portugal',
+      city: 'Lisbon',
+      state: '',
+      country: 'Portugal',
+      preview: preview,
+    );
+
+    await _pumpSignedInApp(
+      tester,
+      mediaRepository: FakeMediaRepository(places: [place]),
+    );
+
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    for (var index = 0; index < 5; index++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Lisbon'), findsWidgets);
+    expect(find.text('Portugal'), findsWidgets);
+    expect(_findAssetThumbnail('place-asset-1'), findsWidgets);
+  });
+
   testWidgets('loads the next timeline page as the grid scrolls', (
     tester,
   ) async {
@@ -1155,11 +1203,13 @@ class FakeMediaRepository implements MediaRepository {
     this.paginatedTimeline = false,
     this.includeVideoAsset = false,
     this.memories = const <MemorySummary>[],
+    this.places = const <PlaceSummary>[],
   });
 
   final bool paginatedTimeline;
   final bool includeVideoAsset;
   final List<MemorySummary> memories;
+  final List<PlaceSummary> places;
 
   @override
   Future<List<AlbumSummary>> fetchAlbums(AuthenticatedSession session) async =>
@@ -1179,6 +1229,19 @@ class FakeMediaRepository implements MediaRepository {
           thumbnailUrls: ['mock://person-1?palette=dusk&variant=thumbnail'],
         ),
       ];
+
+  @override
+  Future<List<PlaceSummary>> fetchPlaces(AuthenticatedSession session) async =>
+      places;
+
+  @override
+  Future<MediaPage<AssetSummary>> fetchPlaceAssetsPage(
+    AuthenticatedSession session, {
+    required PlaceSummary place,
+    AssetSortOrder sortOrder = AssetSortOrder.newestFirst,
+    String? page,
+    int pageSize = 120,
+  }) async => MediaPage(items: [place.preview]);
 
   @override
   Future<MediaPage<AssetSummary>> fetchAlbumAssetsPage(

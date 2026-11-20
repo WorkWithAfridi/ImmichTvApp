@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:immichtv/src/core/models/authenticated_session.dart';
+import 'package:immichtv/src/core/models/asset_summary.dart';
+import 'package:immichtv/src/core/models/place_summary.dart';
 import 'package:immichtv/src/core/repositories/playback_preferences.dart';
 import 'package:immichtv/src/core/models/server_capabilities.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
@@ -85,6 +87,80 @@ void main() {
     expect(adapter.requests, hasLength(2));
     expect(adapter.requests.first.queryParameters, {'page': 1, 'size': 100});
     expect(adapter.requests.last.queryParameters, {'page': 2, 'size': 100});
+  });
+
+  test('places come from the city endpoint and carry location data', () async {
+    final adapter = _RecordingHttpClientAdapter(
+      responses: [
+        _jsonResponse([
+          {
+            'id': 'city-asset',
+            'type': 'IMAGE',
+            'fileCreatedAt': '2025-06-01T12:00:00.000Z',
+            'exifInfo': {'city': 'Lisbon', 'state': 'Lisbon', 'country': 'Portugal'},
+          },
+        ]),
+      ],
+    );
+    final session = _session(
+      capabilities: const ServerCapabilities(major: 3, mapEnabled: true),
+    );
+
+    final places = await ImmichMediaRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    ).fetchPlaces(session);
+
+    expect(places, hasLength(1));
+    expect(places.single.city, 'Lisbon');
+    expect(places.single.country, 'Portugal');
+    expect(adapter.requests.single.uri.toString(),
+        'https://photos.example.com/api/search/cities');
+  });
+
+  test('place assets are searched by city with the map gate applied', () async {
+    final adapter = _RecordingHttpClientAdapter(
+      responses: [_jsonResponse({'assets': {'items': [], 'count': 0}})],
+    );
+    final repository = ImmichMediaRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+    final session = _session(
+      capabilities: const ServerCapabilities(major: 3, mapEnabled: true),
+    );
+    final place = PlaceSummary(
+      id: 'Lisbon|Portugal',
+      city: 'Lisbon',
+      state: 'Lisbon',
+      country: 'Portugal',
+      preview: AssetSummary(
+        id: 'preview',
+        thumbnailUrls: [],
+        displayUrls: [],
+        type: 'IMAGE',
+        createdAt: DateTime.utc(2025),
+      ),
+    );
+
+    await repository.fetchPlaceAssetsPage(session, place: place);
+
+    expect(adapter.requestData.single, containsPair('city', 'Lisbon'));
+    expect(adapter.requestData.single, containsPair('country', 'Portugal'));
+  });
+
+  test('places are skipped when the server has map disabled', () async {
+    final adapter = _RecordingHttpClientAdapter();
+    final repository = ImmichMediaRepository(
+      dio: Dio()..httpClientAdapter = adapter,
+    );
+
+    final places = await repository.fetchPlaces(
+      _session(
+        capabilities: const ServerCapabilities(major: 3, mapEnabled: false),
+      ),
+    );
+
+    expect(places, isEmpty);
+    expect(adapter.requests, isEmpty);
   });
 
   test('videos expose the HLS playlist on servers that support it', () async {

@@ -8,6 +8,7 @@ import 'package:immichtv/src/core/models/media_page.dart';
 import 'package:immichtv/src/core/models/memory_summary.dart';
 import 'package:immichtv/src/core/errors/app_exception.dart';
 import 'package:immichtv/src/core/models/person_summary.dart';
+import 'package:immichtv/src/core/models/place_summary.dart';
 import 'package:immichtv/src/core/models/server_config.dart';
 import 'package:immichtv/src/core/models/user_profile.dart';
 import 'package:immichtv/src/core/repositories/media_repository.dart';
@@ -219,6 +220,19 @@ class _FakeMediaRepository implements MediaRepository {
     }
     return people;
   }
+
+  @override
+  Future<List<PlaceSummary>> fetchPlaces(AuthenticatedSession session) async =>
+      const <PlaceSummary>[];
+
+  @override
+  Future<MediaPage<AssetSummary>> fetchPlaceAssetsPage(
+    AuthenticatedSession session, {
+    required PlaceSummary place,
+    AssetSortOrder sortOrder = AssetSortOrder.newestFirst,
+    String? page,
+    int pageSize = 120,
+  }) async => const MediaPage(items: []);
 
   @override
   Future<MediaPage<AssetSummary>> fetchAlbumAssetsPage(
