@@ -32,7 +32,7 @@ Current product direction:
 - Browse person-specific media from the People tab
 - Revisit "On this day" and birthday memories as a fullscreen gallery
 - View photos and videos fullscreen, with adaptive HLS streaming on supported servers
-- Start slideshow playback directly from the viewer
+- Start slideshow playback directly from the viewer, continuously loading more photos as it goes
 - Use a layout tuned for TV remotes, keyboards, and pointer input
 - Detect the connected Immich server's version and enabled features so newer APIs are used only when supported
 - Keep browsing already-loaded media during brief connection drops, with a retry action when the server returns

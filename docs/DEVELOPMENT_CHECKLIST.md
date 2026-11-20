@@ -58,6 +58,7 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [x] Prefer adaptive HLS playback on supported servers with automatic source fallback.
 - [x] Add next/previous asset navigation with remote, keyboard, and pointer support.
 - [x] Add slideshow playback controls, duration settings, and pause/resume.
+- [x] Continue slideshow playback by loading the next page near the end of the loaded assets.
 - [x] Add screen-safe overlays for metadata and transport controls.
 
 ## Phase 6: Performance and Reliability
