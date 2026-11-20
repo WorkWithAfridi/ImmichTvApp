@@ -23,7 +23,7 @@ class _SlideshowConfigDialogState extends State<_SlideshowConfigDialog> {
     final theme = Theme.of(context);
 
     return Dialog(
-      backgroundColor: const Color(0xFF0D1A21),
+      backgroundColor: AppColors.panel,
       insetPadding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.xl,
         vertical: AppSpacing.xl,
@@ -174,7 +174,7 @@ class _ViewerIconActionButtonState extends State<_ViewerIconActionButton> {
                 : isFocused
                 ? AppColors.focus.withValues(alpha: 0.24)
                 : widget.selected
-                ? AppColors.immichBlue.withValues(alpha: 0.42)
+                ? AppColors.immichPurpleLight.withValues(alpha: 0.42)
                 : Colors.black.withValues(alpha: 0.18),
             shape: BoxShape.circle,
             border: Border.all(
@@ -259,7 +259,7 @@ class _ViewerWallpaperClock extends StatelessWidget {
 
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.22),
+        color: Colors.black.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
       child: Padding(

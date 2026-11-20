@@ -519,8 +519,8 @@ class _PersonSummaryTileState extends State<_PersonSummaryTile> {
             isFocused: isFocused,
             isActive: isActive,
             isSelected: widget.isSelected,
-            backgroundColor: const Color(0xFF0D1A21),
-            activeBackgroundColor: const Color(0xFF13212A),
+            backgroundColor: AppColors.panel,
+            activeBackgroundColor: AppColors.panelActive,
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.lg, min: 20, max: 24),
             ),

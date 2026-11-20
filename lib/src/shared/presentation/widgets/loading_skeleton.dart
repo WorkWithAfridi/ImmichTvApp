@@ -6,8 +6,8 @@ class LoadingSkeleton extends StatefulWidget {
     this.width,
     this.height,
     this.borderRadius = 16,
-    this.baseColor = const Color(0xFF050505),
-    this.highlightColor = const Color(0xFF171717),
+    this.baseColor = const Color(0xFF0F0F13),
+    this.highlightColor = const Color(0xFF1A1A20),
     this.showBorder = false,
   });
 

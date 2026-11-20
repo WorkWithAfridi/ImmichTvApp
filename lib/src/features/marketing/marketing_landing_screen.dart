@@ -280,10 +280,10 @@ class _Hero extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF050C10),
-                    Color(0xF2071014),
-                    Color(0xD9071014),
-                    Color(0xFF071014),
+                    Color(0xFF0A0A0C),
+                    Color(0xF20C0C10),
+                    Color(0xD90C0C10),
+                    Color(0xFF0A0A0C),
                   ],
                   stops: [0, 0.24, 0.58, 1],
                   begin: Alignment.topCenter,
@@ -1482,13 +1482,13 @@ class _FaqItem {
 class _SiteColors {
   const _SiteColors._();
 
-  static const page = Color(0xFF071014);
-  static const section = Color(0xFF081216);
-  static const band = Color(0xFF0B171C);
-  static const ink = Color(0xFFF4FAF8);
-  static const muted = Color(0xFFA7B8BE);
-  static const accent = Color(0xFF91DDC5);
-  static const accentLight = Color(0xFF8FE3C6);
-  static const line = Color(0x263A555E);
-  static const lineStrong = Color(0x667B929A);
+  static const page = Color(0xFF0A0A0C);
+  static const section = Color(0xFF101014);
+  static const band = Color(0xFF17171E);
+  static const ink = Color(0xFFF5F5F7);
+  static const muted = Color(0xFFB0B0B8);
+  static const accent = Color(0xFFA992D2);
+  static const accentLight = Color(0xFFC9B8E8);
+  static const line = Color(0x26A992D2);
+  static const lineStrong = Color(0x66A992D2);
 }

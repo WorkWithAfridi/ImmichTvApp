@@ -389,7 +389,7 @@ class _SettingsInfoCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(scale.space(18, min: 14, max: 20)),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1A21),
+        color: AppColors.panel,
         borderRadius: BorderRadius.circular(
           scale.radius(AppRadii.lg, min: 16, max: 20),
         ),
@@ -547,8 +547,8 @@ class _PinToggleChip extends StatelessWidget {
             isFocused: focusState.isFocused,
             isActive: focusState.isActive,
             isSelected: isSelected,
-            backgroundColor: const Color(0xFF0D1A21),
-            activeBackgroundColor: const Color(0xFF111F26),
+            backgroundColor: AppColors.panel,
+            activeBackgroundColor: AppColors.panelActive,
             selectedBackgroundColor: AppColors.focus.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.pill, min: 999, max: 999),
@@ -617,7 +617,7 @@ class _PinEnrollmentCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(scale.space(18, min: 14, max: 20)),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1A21),
+        color: AppColors.panel,
         borderRadius: BorderRadius.circular(
           scale.radius(AppRadii.lg, min: 16, max: 20),
         ),
@@ -755,8 +755,8 @@ class _PinActionChip extends StatelessWidget {
             isFocused: focusState.isFocused,
             isActive: focusState.isActive,
             isSelected: isSelected,
-            backgroundColor: const Color(0xFF0D1A21),
-            activeBackgroundColor: const Color(0xFF111F26),
+            backgroundColor: AppColors.panel,
+            activeBackgroundColor: AppColors.panelActive,
             selectedBackgroundColor: AppColors.focus.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.pill, min: 999, max: 999),
@@ -790,7 +790,7 @@ class _SettingsStatusPanel extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(scale.space(24, min: 18, max: 28)),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D1A21),
+        color: AppColors.panel,
         borderRadius: BorderRadius.circular(
           scale.radius(AppRadii.lg, min: 16, max: 20),
         ),

@@ -27,6 +27,7 @@ import '../../shared/presentation/app_focus_decoration.dart';
 import '../../shared/presentation/app_radii.dart';
 import '../../shared/presentation/app_scale.dart';
 import '../../shared/presentation/app_spacing.dart';
+import '../../shared/presentation/widgets/ambient_background.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
 import '../../shared/presentation/widgets/loading_skeleton.dart';
 import '../../shared/presentation/widgets/on_screen_keyboard/on_screen_keyboard.dart';
@@ -189,8 +190,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ..loadInitial(),
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: BlocBuilder<LibraryCubit, LibraryState>(
+        body: AmbientBackground(
+          child: SafeArea(
+            child: BlocBuilder<LibraryCubit, LibraryState>(
             builder: (context, state) {
               return LayoutBuilder(
                 builder: (context, constraints) {
@@ -265,6 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ),
+      ),
       ),
     );
   }
@@ -342,7 +345,7 @@ class _Sidebar extends StatelessWidget {
               right: BorderSide(color: AppColors.border, width: 1),
             ),
             gradient: LinearGradient(
-              colors: [Color(0xFF0A141A), Color(0xFF0B171D)],
+              colors: [AppColors.panelSidebarStart, AppColors.panelSidebarEnd],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -638,8 +641,8 @@ class _SidebarMenuButtonState extends State<_SidebarMenuButton> {
             isActive: isActive,
             isSelected: widget.isSelected,
             backgroundColor: const Color(0x00000000),
-            activeBackgroundColor: const Color(0xFF111F26),
-            selectedBackgroundColor: const Color(0xFF111F26),
+            activeBackgroundColor: AppColors.panelActive,
+            selectedBackgroundColor: AppColors.panelActive,
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.md, min: 16, max: 18),
             ),
@@ -718,7 +721,7 @@ class _SidebarActionButton extends StatelessWidget {
             isFocused: isFocused,
             isActive: isActive,
             backgroundColor: const Color(0x00000000),
-            activeBackgroundColor: const Color(0xFF111F26),
+            activeBackgroundColor: AppColors.panelActive,
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.md, min: 16, max: 18),
             ),
@@ -859,8 +862,8 @@ class _MenuToggleButton extends StatelessWidget {
             decoration: AppFocusDecoration.surface(
               isFocused: isFocused,
               isActive: isActive,
-              backgroundColor: const Color(0xFF0D1A21),
-              activeBackgroundColor: const Color(0xFF111F26),
+              backgroundColor: AppColors.panel,
+              activeBackgroundColor: AppColors.panelActive,
               borderRadius: BorderRadius.circular(
                 scale.radius(
                   compact ? AppRadii.md : AppRadii.lg,

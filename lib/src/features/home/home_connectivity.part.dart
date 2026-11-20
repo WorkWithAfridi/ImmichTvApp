@@ -36,7 +36,7 @@ class _ConnectivityBanner extends StatelessWidget {
                 vertical: scale.space(10, min: 8, max: 12),
               ),
               decoration: BoxDecoration(
-                color: const Color(0xFF1A2229),
+                color: AppColors.surfaceMuted,
                 borderRadius: BorderRadius.circular(
                   scale.radius(AppRadii.lg, min: 12, max: 18),
                 ),

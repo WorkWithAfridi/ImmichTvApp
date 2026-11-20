@@ -28,6 +28,7 @@ import '../slideshow/slideshow_player_screen.dart';
 import 'cubit/asset_viewer_cubit.dart';
 import 'hdr_playback_preference.dart';
 import 'video_playback_policy.dart';
+import 'wallpaper_clock_policy.dart';
 
 part 'asset_viewer_controls.part.dart';
 part 'asset_viewer_info.part.dart';
@@ -560,8 +561,10 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
                         ),
                       ),
                       Positioned(
-                        left: AppSpacing.md,
-                        bottom: AppSpacing.md,
+                        left: AppSpacing.md +
+                            WallpaperClockPolicy.drift(_wallpaperClockNow).dx,
+                        bottom: AppSpacing.md +
+                            WallpaperClockPolicy.drift(_wallpaperClockNow).dy,
                         child: _ChromeVisibility(
                           visible: _showWallpaperClock,
                           child: _ViewerWallpaperClock(now: _wallpaperClockNow),

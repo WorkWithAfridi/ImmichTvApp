@@ -230,10 +230,10 @@ class ImmichTvApp extends StatelessWidget {
       useMaterial3: true,
       colorScheme: const ColorScheme(
         brightness: Brightness.dark,
-        primary: AppColors.immichBlue,
+        primary: AppColors.primary,
         onPrimary: AppColors.darkTextPrimary,
-        secondary: AppColors.immichPink,
-        onSecondary: AppColors.darkTextPrimary,
+        secondary: AppColors.immichPurpleLight,
+        onSecondary: AppColors.immichPurpleDeep,
         error: AppColors.immichRed,
         onError: AppColors.darkTextPrimary,
         surface: AppColors.darkSurface,
@@ -295,7 +295,7 @@ class ImmichTvApp extends StatelessWidget {
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-              backgroundColor: AppColors.immichBlue,
+              backgroundColor: AppColors.primary,
               foregroundColor: AppColors.actionForeground,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(AppRadii.md),
@@ -303,7 +303,7 @@ class ImmichTvApp extends StatelessWidget {
             ),
           ),
           progressIndicatorTheme: const ProgressIndicatorThemeData(
-            color: AppColors.immichBlue,
+            color: AppColors.primary,
             linearTrackColor: AppColors.darkSurfaceSoft,
           ),
           textButtonTheme: TextButtonThemeData(
@@ -381,7 +381,7 @@ class _MarketingSiteApp extends StatelessWidget {
           useMaterial3: true,
           brightness: Brightness.dark,
           colorScheme: const ColorScheme.dark(
-            primary: AppColors.immichBlue,
+            primary: AppColors.primary,
             surface: AppColors.surface,
             onSurface: AppColors.textPrimary,
           ),

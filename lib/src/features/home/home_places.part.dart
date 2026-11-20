@@ -363,8 +363,8 @@ class _PlaceSummaryTile extends StatelessWidget {
             isFocused: focusState.isFocused,
             isActive: isActive,
             isSelected: isSelected,
-            backgroundColor: const Color(0xFF0D1A21),
-            activeBackgroundColor: const Color(0xFF13212A),
+            backgroundColor: AppColors.panel,
+            activeBackgroundColor: AppColors.panelActive,
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.lg, min: 16, max: 20),
             ),

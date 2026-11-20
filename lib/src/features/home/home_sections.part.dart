@@ -656,7 +656,7 @@ class _LoadMoreTile extends StatelessWidget {
     final theme = Theme.of(context);
     final scale = AppScale.of(context);
     return Container(
-      color: const Color(0xFF0D1A21),
+      color: AppColors.panel,
       padding: EdgeInsets.all(scale.space(AppSpacing.md, min: 14, max: 16)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -4,14 +4,32 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../shared/presentation/app_colors.dart';
 import '../../shared/presentation/app_scale.dart';
+import '../../shared/presentation/widgets/ambient_background.dart';
+import '../../shared/presentation/widgets/immich_logo.dart';
 
-class BootstrapFlow extends StatelessWidget {
+class BootstrapFlow extends StatefulWidget {
   const BootstrapFlow({super.key});
+
+  @override
+  State<BootstrapFlow> createState() => _BootstrapFlowState();
+}
+
+class _BootstrapFlowState extends State<BootstrapFlow> {
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _visible = true);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final scale = AppScale.of(context);
-    final fontSize = scale.text(56, min: 34, max: 64);
     final versionTextStyle = GoogleFonts.inter(
       color: Colors.white.withValues(alpha: 0.62),
       fontSize: scale.text(14, min: 12, max: 16),
@@ -22,37 +40,33 @@ class BootstrapFlow extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: ColoredBox(
-        color: AppColors.background,
+      body: AmbientBackground(
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Immich TV',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1.1,
-                  height: 0.96,
-                ),
+              ImmichLogo(
+                size: scale.sizeOf(220, min: 160, max: 260),
               ),
-              SizedBox(height: scale.space(10, min: 8, max: 12)),
-              FutureBuilder<PackageInfo>(
-                future: PackageInfo.fromPlatform(),
-                builder: (context, snapshot) {
-                  final packageInfo = snapshot.data;
-                  if (packageInfo == null) {
-                    return const SizedBox.shrink();
-                  }
-                  return Text(
-                    'v${packageInfo.version} (${packageInfo.buildNumber})',
-                    textAlign: TextAlign.center,
-                    style: versionTextStyle,
-                  );
-                },
+              SizedBox(height: scale.space(18, min: 14, max: 22)),
+              AnimatedOpacity(
+                opacity: _visible ? 1 : 0,
+                duration: const Duration(milliseconds: 520),
+                curve: Curves.easeOutCubic,
+                child: FutureBuilder<PackageInfo>(
+                  future: PackageInfo.fromPlatform(),
+                  builder: (context, snapshot) {
+                    final packageInfo = snapshot.data;
+                    if (packageInfo == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return Text(
+                      'v${packageInfo.version} (${packageInfo.buildNumber})',
+                      textAlign: TextAlign.center,
+                      style: versionTextStyle,
+                    );
+                  },
+                ),
               ),
             ],
           ),

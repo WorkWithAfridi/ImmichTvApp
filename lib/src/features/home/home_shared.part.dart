@@ -133,8 +133,8 @@ class _AssetSortChip extends StatelessWidget {
           decoration: AppFocusDecoration.surface(
             isFocused: focusState.isFocused,
             isSelected: isSelected,
-            backgroundColor: const Color(0xFF0D1A21),
-            activeBackgroundColor: const Color(0xFF111F26),
+            backgroundColor: AppColors.panel,
+            activeBackgroundColor: AppColors.panelActive,
             selectedBackgroundColor: AppColors.focus.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.pill, min: 999, max: 999),
@@ -570,8 +570,8 @@ class _TimelineYearChipState extends State<_TimelineYearChip> {
           decoration: AppFocusDecoration.surface(
             isFocused: isFocused,
             isSelected: isSelected,
-            backgroundColor: const Color(0xFF0D1A21),
-            activeBackgroundColor: const Color(0xFF111F26),
+            backgroundColor: AppColors.panel,
+            activeBackgroundColor: AppColors.panelActive,
             selectedBackgroundColor: AppColors.focus.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.pill, min: 999, max: 999),

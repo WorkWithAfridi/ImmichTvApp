@@ -36,8 +36,8 @@ class PinPadButton extends StatelessWidget {
           decoration: AppFocusDecoration.surface(
             isFocused: isFocused,
             isActive: isActive,
-            backgroundColor: const Color(0xFF10202A),
-            activeBackgroundColor: const Color(0xFF17303E),
+            backgroundColor: const Color(0xFF141418),
+            activeBackgroundColor: const Color(0xFF1C1C24),
             borderRadius: BorderRadius.circular(AppRadii.lg),
           ),
           child: Center(

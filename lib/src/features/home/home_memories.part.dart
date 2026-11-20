@@ -358,8 +358,8 @@ class _MemoryYearTile extends StatelessWidget {
             isFocused: focusState.isFocused,
             isActive: isActive,
             isSelected: isSelected,
-            backgroundColor: const Color(0xFF0D1A21),
-            activeBackgroundColor: const Color(0xFF13212A),
+            backgroundColor: AppColors.panel,
+            activeBackgroundColor: AppColors.panelActive,
             selectedBackgroundColor: AppColors.focus.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(
               scale.radius(AppRadii.lg, min: 18, max: 22),
