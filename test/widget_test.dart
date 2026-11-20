@@ -781,7 +781,7 @@ void main() {
 
     expect(find.text('2023'), findsWidgets);
     expect(find.text('November 19, 2023'), findsWidgets);
-    expect(find.textContaining('3 years ago'), findsOneWidget);
+    expect(find.textContaining('1 memory'), findsOneWidget);
     expect(_findAssetThumbnail('memory-asset-1'), findsOneWidget);
 
     final thumbnailFinder = _findAssetThumbnail('memory-asset-1').first;
@@ -790,6 +790,63 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byIcon(Icons.close_rounded), findsWidgets);
+  });
+
+  testWidgets('groups memories from the same year into one folder', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1100, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    MemorySummary buildMemory(String id, DateTime date) {
+      return MemorySummary(
+        id: id,
+        title: '2023',
+        subtitle: '3 years ago',
+        memoryAt: date,
+        assets: [
+          AssetSummary(
+            id: '$id-asset',
+            thumbnailUrls: [
+              'https://photos.example.com/api/assets/$id-asset/thumbnail?size=preview',
+            ],
+            displayUrls: [
+              'https://photos.example.com/api/assets/$id-asset/original',
+            ],
+            type: 'IMAGE',
+            createdAt: date,
+          ),
+        ],
+      );
+    }
+
+    await _pumpSignedInApp(
+      tester,
+      mediaRepository: FakeMediaRepository(
+        memories: [
+          buildMemory('memory-a', DateTime.utc(2023, 3, 4)),
+          buildMemory('memory-b', DateTime.utc(2023, 11, 19)),
+        ],
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Show menu'));
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+    for (var index = 0; index < 4; index++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // One rail folder plus one grid heading, not one folder per memory.
+    expect(find.text('2023'), findsNWidgets(2));
+    expect(find.textContaining('2 memories'), findsOneWidget);
+    expect(_findAssetThumbnail('memory-a-asset'), findsOneWidget);
+    expect(_findAssetThumbnail('memory-b-asset'), findsOneWidget);
   });
 
   testWidgets('loads the next timeline page as the grid scrolls', (
