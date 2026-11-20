@@ -30,6 +30,7 @@ import 'hdr_playback_preference.dart';
 import 'video_playback_policy.dart';
 import 'wallpaper_clock_policy.dart';
 
+part 'asset_viewer_config_dialog.part.dart';
 part 'asset_viewer_controls.part.dart';
 part 'asset_viewer_info.part.dart';
 part 'asset_viewer_media.part.dart';
@@ -737,8 +738,13 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
       return null;
     }
 
-    if (_videoScrubberButtonFocusNode.hasFocus) {
+    if (_videoMuteButtonFocusNode.hasFocus) {
       _videoPlayPauseButtonFocusNode.requestFocus();
+      return null;
+    }
+
+    if (_videoScrubberButtonFocusNode.hasFocus) {
+      _videoMuteButtonFocusNode.requestFocus();
       return null;
     }
 

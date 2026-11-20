@@ -1008,6 +1008,64 @@ void main() {
     expect(find.text('Close'), findsOneWidget);
     expect(find.text('2026-11-09'), findsOneWidget);
   });
+
+  testWidgets('slideshow setup is navigable with arrow keys', (tester) async {
+    tester.view.physicalSize = const Size(1100, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await _pumpSignedInApp(tester, mediaRepository: FakeMediaRepository());
+
+    final firstAssetLabel = _findAssetThumbnail('asset-1').first;
+    await tester.ensureVisible(firstAssetLabel);
+    await tester.tap(firstAssetLabel, warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.slideshow_rounded));
+    await tester.pumpAndSettle();
+
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('slideshow-duration-0'),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('slideshow-duration-1'),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('slideshow-cancel'),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('slideshow-duration-'),
+    );
+
+    for (var index = 0; index < 2; index++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+      await tester.pumpAndSettle();
+    }
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('slideshow-duration-0'),
+    );
+    expect(find.text('2'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text('Pause'), findsOneWidget);
+  });
 }
 
 Future<void> _settleAppFlow(WidgetTester tester) async {

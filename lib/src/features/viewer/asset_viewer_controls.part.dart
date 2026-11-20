@@ -1,108 +1,5 @@
 part of 'asset_viewer_screen.dart';
 
-class _SlideshowConfigDialog extends StatefulWidget {
-  const _SlideshowConfigDialog({
-    required this.durationOptions,
-    required this.photoCount,
-    required this.currentAssetIsVideo,
-    required this.totalAssetCount,
-  });
-
-  final List<int> durationOptions;
-  final int photoCount;
-  final bool currentAssetIsVideo;
-  final int totalAssetCount;
-
-  @override
-  State<_SlideshowConfigDialog> createState() => _SlideshowConfigDialogState();
-}
-
-class _SlideshowConfigDialogState extends State<_SlideshowConfigDialog> {
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Dialog(
-      backgroundColor: AppColors.panel,
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.xl,
-        vertical: AppSpacing.xl,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.xl),
-        side: const BorderSide(color: Color(0xFF22353F)),
-      ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: FocusTraversalGroup(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Start slideshow',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      tooltip: 'Cancel',
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.white.withValues(alpha: 0.06),
-                        foregroundColor: Colors.white,
-                      ),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  widget.currentAssetIsVideo
-                      ? 'Videos are skipped in slideshow mode. Playback will begin from the first photo in this set.'
-                      : 'Choose how long each photo stays on screen. Selecting an interval starts playback immediately.',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.82),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Interval',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: widget.durationOptions.map((seconds) {
-                    return _SlideshowDurationOption(
-                      seconds: seconds,
-                      isSelected: false,
-                      autofocus: seconds == widget.durationOptions.first,
-                      onPressed: () => Navigator.of(context).pop(seconds),
-                    );
-                  }).toList(growable: false),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _ChromeVisibility extends StatelessWidget {
   const _ChromeVisibility({
     required this.visible,
@@ -311,6 +208,7 @@ class _SlideshowDurationOption extends StatefulWidget {
     required this.seconds,
     required this.isSelected,
     required this.onPressed,
+    this.focusNode,
     this.autofocus = false,
   });
 
@@ -318,6 +216,7 @@ class _SlideshowDurationOption extends StatefulWidget {
   final bool isSelected;
   final bool autofocus;
   final VoidCallback onPressed;
+  final FocusNode? focusNode;
 
   @override
   State<_SlideshowDurationOption> createState() =>
@@ -331,7 +230,9 @@ class _SlideshowDurationOptionState extends State<_SlideshowDurationOption> {
 
     return SizedBox(
       width: 112,
+      height: 88,
       child: TvFocusable(
+        focusNode: widget.focusNode,
         autofocus: widget.autofocus,
         onPressed: widget.onPressed,
         builder: (context, focusState) {
@@ -340,9 +241,10 @@ class _SlideshowDurationOptionState extends State<_SlideshowDurationOption> {
 
           return AnimatedContainer(
             duration: const Duration(milliseconds: 160),
+            alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
-              vertical: AppSpacing.lg,
+              vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
               color: isSelected
