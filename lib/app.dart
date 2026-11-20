@@ -9,6 +9,7 @@ import 'src/app_shell.dart';
 import 'src/core/config/app_environment.dart';
 import 'src/core/network/immich_dio_factory.dart';
 import 'src/core/performance/rebuild_metrics.dart';
+import 'src/core/repositories/asset_detail_repository.dart';
 import 'src/core/repositories/asset_image_repository.dart';
 import 'src/core/repositories/auth_repository.dart';
 import 'src/core/repositories/hls_session_repository.dart';
@@ -18,10 +19,12 @@ import 'src/core/repositories/server_repository.dart';
 import 'src/core/services/server_url_normalizer.dart';
 import 'src/features/app_flow/cubit/app_flow_cubit.dart';
 import 'src/features/auth/data/immich_auth_repository.dart';
+import 'src/features/library/data/immich_asset_detail_repository.dart';
 import 'src/features/library/data/immich_asset_image_repository.dart';
 import 'src/features/library/data/immich_media_repository.dart';
 import 'src/features/viewer/data/immich_hls_session_repository.dart';
 import 'src/features/marketing/marketing_landing_screen.dart';
+import 'src/features/mock/data/mock_asset_detail_repository.dart';
 import 'src/features/mock/data/mock_auth_repository.dart';
 import 'src/features/mock/data/mock_media_repository.dart';
 import 'src/features/mock/data/mock_server_repository.dart';
@@ -45,6 +48,7 @@ class ImmichTvApp extends StatelessWidget {
     AssetImageRepository? assetImageRepository,
     ServerRepository? serverRepository,
     MediaRepository? mediaRepository,
+    AssetDetailRepository? assetDetailRepository,
     PlaybackPreferences? playbackPreferences,
     HlsSessionRepository? hlsSessionRepository,
     bool? useMockServices,
@@ -73,6 +77,11 @@ class ImmichTvApp extends StatelessWidget {
                    dio: ImmichDioFactory.create(),
                    normalizer: const ServerUrlNormalizer(),
                  )),
+       _assetDetailRepository =
+           assetDetailRepository ??
+           ((useMockServices ?? false)
+               ? const MockAssetDetailRepository()
+               : ImmichAssetDetailRepository(dio: ImmichDioFactory.create())),
        _assetImageRepository =
            assetImageRepository ?? ImmichAssetImageRepository(),
        _mediaRepository =
@@ -91,6 +100,7 @@ class ImmichTvApp extends StatelessWidget {
   final PlaybackPreferences _playbackPreferences;
   final HlsSessionRepository _hlsSessionRepository;
   late final AuthRepository _authRepository;
+  late final AssetDetailRepository _assetDetailRepository;
   late final AssetImageRepository _assetImageRepository;
   late final ServerRepository _serverRepository;
   late final MediaRepository _mediaRepository;
@@ -102,6 +112,9 @@ class ImmichTvApp extends StatelessWidget {
       RepositoryProvider<AuthRepository>.value(value: _authRepository),
       RepositoryProvider<AssetImageRepository>.value(
         value: _assetImageRepository,
+      ),
+      RepositoryProvider<AssetDetailRepository>.value(
+        value: _assetDetailRepository,
       ),
       RepositoryProvider<ServerRepository>.value(value: _serverRepository),
       RepositoryProvider<MediaRepository>.value(value: _mediaRepository),

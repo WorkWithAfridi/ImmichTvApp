@@ -6,11 +6,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/models/asset_detail.dart';
+import '../../core/models/authenticated_session.dart';
 import '../../core/models/asset_summary.dart';
 import '../../core/models/immich_auth_method.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/network/immich_headers.dart';
 import '../../platform/auth/browser_session_bridge.dart';
+import '../../core/repositories/asset_detail_repository.dart';
 import '../../core/repositories/asset_image_repository.dart';
 import '../../core/repositories/hls_session_repository.dart';
 import '../../platform/media/web_authenticated_video_cache.dart';
@@ -27,6 +30,7 @@ import 'hdr_playback_preference.dart';
 import 'video_playback_policy.dart';
 
 part 'asset_viewer_controls.part.dart';
+part 'asset_viewer_info.part.dart';
 part 'asset_viewer_media.part.dart';
 
 class AssetViewerScreen extends StatelessWidget {
@@ -40,6 +44,8 @@ class AssetViewerScreen extends StatelessWidget {
     this.hlsSessionRepository,
     this.slideshowPageLoader,
     this.hasMoreSlideshowPages = false,
+    this.assetDetailRepository,
+    this.session,
   });
 
   final List<AssetSummary> assets;
@@ -50,6 +56,8 @@ class AssetViewerScreen extends StatelessWidget {
   final HlsSessionRepository? hlsSessionRepository;
   final SlideshowPageLoader? slideshowPageLoader;
   final bool hasMoreSlideshowPages;
+  final AssetDetailRepository? assetDetailRepository;
+  final AuthenticatedSession? session;
 
   static Future<void> show(
     BuildContext context, {
@@ -61,6 +69,8 @@ class AssetViewerScreen extends StatelessWidget {
     HlsSessionRepository? hlsSessionRepository,
     SlideshowPageLoader? slideshowPageLoader,
     bool hasMoreSlideshowPages = false,
+    AssetDetailRepository? assetDetailRepository,
+    AuthenticatedSession? session,
   }) {
     return Navigator.of(context).push(
       PageRouteBuilder<void>(
@@ -75,6 +85,8 @@ class AssetViewerScreen extends StatelessWidget {
               hlsSessionRepository: hlsSessionRepository,
               slideshowPageLoader: slideshowPageLoader,
               hasMoreSlideshowPages: hasMoreSlideshowPages,
+              assetDetailRepository: assetDetailRepository,
+              session: session,
             ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curvedAnimation = CurvedAnimation(
@@ -107,6 +119,8 @@ class AssetViewerScreen extends StatelessWidget {
         hlsSessionRepository: hlsSessionRepository,
         slideshowPageLoader: slideshowPageLoader,
         hasMoreSlideshowPages: hasMoreSlideshowPages,
+        assetDetailRepository: assetDetailRepository,
+        session: session,
       ),
     );
   }
@@ -120,6 +134,8 @@ class _AssetViewerView extends StatefulWidget {
     this.hlsSessionRepository,
     this.slideshowPageLoader,
     this.hasMoreSlideshowPages = false,
+    this.assetDetailRepository,
+    this.session,
   });
 
   final String accessToken;
@@ -128,6 +144,8 @@ class _AssetViewerView extends StatefulWidget {
   final HlsSessionRepository? hlsSessionRepository;
   final SlideshowPageLoader? slideshowPageLoader;
   final bool hasMoreSlideshowPages;
+  final AssetDetailRepository? assetDetailRepository;
+  final AuthenticatedSession? session;
 
   @override
   State<_AssetViewerView> createState() => _AssetViewerViewState();
@@ -179,6 +197,13 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
   DateTime? _wallpaperModeActivatedAt;
   _ViewerVideoScrubberHandle? _activeVideoScrubberHandle;
   bool? _hdrPlaybackEnabled;
+  bool _infoVisible = false;
+  bool _isLoadingDetail = false;
+  AssetDetail? _detail;
+  String? _detailAssetId;
+  final FocusNode _infoCloseFocusNode = FocusNode(
+    debugLabel: 'viewer-info-close',
+  );
 
   @override
   void initState() {
@@ -244,6 +269,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
     _imageFitButtonFocusNode.dispose();
     _wallpaperButtonFocusNode.dispose();
     _closeButtonFocusNode.dispose();
+    _infoCloseFocusNode.dispose();
     super.dispose();
   }
 
@@ -263,12 +289,14 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
             _wallpaperModeActive && !state.currentAsset.isVideo;
 
         return Shortcuts(
-          shortcuts: const <ShortcutActivator, Intent>{
+          shortcuts: <ShortcutActivator, Intent>{
             SingleActivator(LogicalKeyboardKey.arrowLeft): _PreviousIntent(),
             SingleActivator(LogicalKeyboardKey.arrowRight): _NextIntent(),
             SingleActivator(LogicalKeyboardKey.arrowDown):
                 _FocusActionsIntent(),
             SingleActivator(LogicalKeyboardKey.arrowUp): _FocusViewerIntent(),
+            if (widget.assetDetailRepository != null)
+              SingleActivator(LogicalKeyboardKey.keyI): _ToggleInfoIntent(),
             SingleActivator(LogicalKeyboardKey.escape): DismissIntent(),
           },
           child: Actions(
@@ -284,6 +312,12 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
               ),
               _FocusViewerIntent: CallbackAction<_FocusViewerIntent>(
                 onInvoke: (_) => _focusViewerSurface(),
+              ),
+              _ToggleInfoIntent: CallbackAction<_ToggleInfoIntent>(
+                onInvoke: (_) {
+                  _toggleInfo();
+                  return null;
+                },
               ),
               DismissIntent: CallbackAction<DismissIntent>(
                 onInvoke: (_) {
@@ -345,6 +379,13 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
                           ),
                         ),
                       ),
+                      if (_infoVisible)
+                        _AssetInfoPanel(
+                          detail: _detail,
+                          isLoading: _isLoadingDetail,
+                          closeFocusNode: _infoCloseFocusNode,
+                          onClose: _toggleInfo,
+                        ),
                       Positioned(
                         top: 0,
                         bottom: 0,
@@ -535,6 +576,39 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
         );
       },
     );
+  }
+
+  void _toggleInfo() {
+    setState(() => _infoVisible = !_infoVisible);
+    if (_infoVisible) {
+      unawaited(_loadDetail());
+    }
+  }
+
+  Future<void> _loadDetail() async {
+    final repository = widget.assetDetailRepository;
+    final session = widget.session;
+    if (repository == null || session == null) {
+      return;
+    }
+    final asset = context.read<AssetViewerCubit>().state.currentAsset;
+    if (_detailAssetId == asset.id && !_isLoadingDetail) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingDetail = true;
+      _detail = null;
+    });
+    final detail = await repository.fetchDetail(session, asset.id);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isLoadingDetail = false;
+      _detail = detail;
+      _detailAssetId = asset.id;
+    });
   }
 
   Future<void> _startSlideshow(AssetViewerState state) async {

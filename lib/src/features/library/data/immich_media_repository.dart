@@ -9,6 +9,7 @@ import '../../../core/models/asset_summary.dart';
 import '../../../core/models/media_page.dart';
 import '../../../core/models/memory_summary.dart';
 import '../../../core/models/person_summary.dart';
+import '../../../core/models/place_summary.dart';
 import '../../../core/models/server_capabilities.dart';
 import '../../../core/network/immich_headers.dart';
 import '../../../core/repositories/media_repository.dart';
@@ -125,6 +126,100 @@ class ImmichMediaRepository implements MediaRepository {
         )
         .where((memory) => memory.assets.isNotEmpty)
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<PlaceSummary>> fetchPlaces(AuthenticatedSession session) async {
+    if (DemoMode.matchesServerUrl(session.serverConfig.serverUrl)) {
+      return _mockMediaRepository.fetchPlaces(session);
+    }
+    if (!session.capabilities.supports(ServerFeature.map)) {
+      return const <PlaceSummary>[];
+    }
+
+    final response = await _dio.get<dynamic>(
+      session.serverConfig.apiEndpoint('search/cities').toString(),
+      options: Options(headers: ImmichHeaders.sessionHeaders(session)),
+    );
+
+    final assets = _extractAssetMaps(response.data)
+        .map((item) => _mapAsset(item, session))
+        .whereType<AssetSummary>()
+        .toList(growable: false);
+
+    final places = <String, PlaceSummary>{};
+    for (final asset in assets) {
+      final place = PlaceSummary.fromAsset(asset);
+      if (place.city.isEmpty || places.containsKey(place.id)) {
+        continue;
+      }
+      places[place.id] = place;
+    }
+
+    final sorted = places.values.toList()
+      ..sort((a, b) => a.city.toLowerCase().compareTo(b.city.toLowerCase()));
+    return List<PlaceSummary>.unmodifiable(sorted);
+  }
+
+  @override
+  Future<MediaPage<AssetSummary>> fetchPlaceAssetsPage(
+    AuthenticatedSession session, {
+    required PlaceSummary place,
+    AssetSortOrder sortOrder = AssetSortOrder.newestFirst,
+    String? page,
+    int pageSize = 120,
+  }) async {
+    if (DemoMode.matchesServerUrl(session.serverConfig.serverUrl)) {
+      return _mockMediaRepository.fetchPlaceAssetsPage(
+        session,
+        place: place,
+        sortOrder: sortOrder,
+        page: page,
+        pageSize: pageSize,
+      );
+    }
+
+    final pageNumber = int.tryParse(page ?? '1') ?? 1;
+    final data = <String, dynamic>{
+      'city': place.city,
+      'page': pageNumber,
+      'size': pageSize,
+      'order': sortOrder.apiValue,
+      'visibility': 'timeline',
+    };
+    if (place.state.isNotEmpty) {
+      data['state'] = place.state;
+    }
+    if (place.country.isNotEmpty) {
+      data['country'] = place.country;
+    }
+
+    final response = await _dio.post<dynamic>(
+      session.serverConfig.apiEndpoint('search/metadata').toString(),
+      data: data,
+      options: Options(
+        headers: {
+          ...ImmichHeaders.sessionHeaders(session),
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+
+    final items = _extractAssetMaps(response.data);
+    return MediaPage(
+      items: items
+          .map((item) => _mapAsset(item, session))
+          .whereType<AssetSummary>()
+          .toList(growable: false),
+      nextPage:
+          _extractNextPage(response.data) ??
+          _extractCountBasedNextPage(
+            response.data,
+            currentPage: pageNumber,
+            pageSize: pageSize,
+            currentItemCount: items.length,
+          ),
+    );
   }
 
   @override
@@ -575,7 +670,17 @@ class ImmichMediaRepository implements MediaRepository {
               .apiEndpoint('assets/$id/video/stream/main.m3u8')
               .toString()
           : null,
+      city: _locationField(item, 'city'),
+      state: _locationField(item, 'state'),
+      country: _locationField(item, 'country'),
     );
+  }
+
+  String? _locationField(Map<String, dynamic> item, String key) {
+    final exif = item['exifInfo'];
+    final value = exif is Map ? exif[key] : item[key];
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
   }
 
   List<String> _buildThumbnailUrls(

@@ -109,6 +109,7 @@ class LibraryCubit extends Cubit<LibraryState> {
     final nextMemories = await safely(
       () => _mediaRepository.fetchMemories(_session),
     );
+    final nextPlaces = await safely(() => _mediaRepository.fetchPlaces(_session));
 
     if (isClosed) {
       return;
@@ -126,6 +127,8 @@ class LibraryCubit extends Cubit<LibraryState> {
       hasLoadedPeople: nextPeople != null || state.hasLoadedPeople,
       memories: nextMemories ?? state.memories,
       hasLoadedMemories: nextMemories != null || state.hasLoadedMemories,
+      places: nextPlaces ?? state.places,
+      hasLoadedPlaces: nextPlaces != null || state.hasLoadedPlaces,
       isOffline: connectivityFailure != null,
     );
 
@@ -231,6 +234,19 @@ class LibraryCubit extends Cubit<LibraryState> {
             ),
           );
           _ensureRefreshPolling();
+        case LibraryTab.places:
+          final places = await _mediaRepository.fetchPlaces(_session);
+          _emitLoaded(
+            state.copyWith(
+              selectedTab: tab,
+              places: places,
+              hasLoadedPlaces: true,
+              status: LibraryLoadStatus.success,
+              isLoadingMore: false,
+              clearError: true,
+            ),
+          );
+          _ensureRefreshPolling();
         case LibraryTab.settings:
           // Settings is rendered from its own cubit and loads no library data.
           emit(
@@ -326,6 +342,8 @@ class LibraryCubit extends Cubit<LibraryState> {
       case LibraryTab.albums:
         return;
       case LibraryTab.memories:
+        return;
+      case LibraryTab.places:
         return;
       case LibraryTab.settings:
         return;
@@ -518,6 +536,7 @@ class LibraryCubit extends Cubit<LibraryState> {
       LibraryTab.people => state.hasLoadedPeople,
       LibraryTab.favorites => state.hasLoadedFavorites,
       LibraryTab.memories => state.hasLoadedMemories,
+      LibraryTab.places => state.hasLoadedPlaces,
       LibraryTab.settings => true,
     };
   }
@@ -551,10 +570,12 @@ class LibraryCubit extends Cubit<LibraryState> {
       );
       final albumsFuture = _mediaRepository.fetchAlbums(_session);
       final memoriesFuture = _mediaRepository.fetchMemories(_session);
+      final placesFuture = _mediaRepository.fetchPlaces(_session);
       final timeline = await timelineFuture;
       final favorites = await favoritesFuture;
       final albums = await albumsFuture;
       final memories = await memoriesFuture;
+      final places = await placesFuture;
 
       final refreshedTimeline = _mergeRefreshedAssets(
         existing: state.timeline,
@@ -574,10 +595,12 @@ class LibraryCubit extends Cubit<LibraryState> {
         clearFavoritesNextPage: favorites.nextPage == null,
         albums: albums,
         memories: memories,
+        places: places,
         hasLoadedTimeline: true,
         hasLoadedFavorites: true,
         hasLoadedAlbums: true,
         hasLoadedMemories: true,
+        hasLoadedPlaces: true,
         status: LibraryLoadStatus.success,
         isOffline: false,
         clearError: true,

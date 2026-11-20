@@ -5,6 +5,7 @@ import '../models/asset_summary.dart';
 import '../models/media_page.dart';
 import '../models/memory_summary.dart';
 import '../models/person_summary.dart';
+import '../models/place_summary.dart';
 
 abstract class MediaRepository {
   Future<List<AlbumSummary>> fetchAlbums(AuthenticatedSession session);
@@ -14,6 +15,17 @@ abstract class MediaRepository {
   /// Returns memories when the connected server supports them, otherwise an
   /// empty list. Callers should gate on `ServerFeature.memories`.
   Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session);
+
+  /// One place per city the user has assets in.
+  Future<List<PlaceSummary>> fetchPlaces(AuthenticatedSession session);
+
+  Future<MediaPage<AssetSummary>> fetchPlaceAssetsPage(
+    AuthenticatedSession session, {
+    required PlaceSummary place,
+    AssetSortOrder sortOrder = AssetSortOrder.newestFirst,
+    String? page,
+    int pageSize = 120,
+  });
 
   Future<MediaPage<AssetSummary>> fetchAlbumAssetsPage(
     AuthenticatedSession session, {

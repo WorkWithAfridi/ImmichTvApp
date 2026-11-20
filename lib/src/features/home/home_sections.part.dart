@@ -296,6 +296,9 @@ class _DayAssetSection extends StatelessWidget {
                     hlsSessionRepository: context.read<HlsSessionRepository>(),
                     slideshowPageLoader: slideshowPageLoader,
                     hasMoreSlideshowPages: hasMoreSlideshowPages,
+                    assetDetailRepository:
+                        context.read<AssetDetailRepository>(),
+                    session: session,
                   ),
                 );
               },

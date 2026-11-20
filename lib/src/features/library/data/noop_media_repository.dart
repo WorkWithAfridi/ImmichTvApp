@@ -5,6 +5,7 @@ import '../../../core/models/asset_summary.dart';
 import '../../../core/models/media_page.dart';
 import '../../../core/models/memory_summary.dart';
 import '../../../core/models/person_summary.dart';
+import '../../../core/models/place_summary.dart';
 import '../../../core/repositories/media_repository.dart';
 
 class NoopMediaRepository implements MediaRepository {
@@ -24,6 +25,24 @@ class NoopMediaRepository implements MediaRepository {
   Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session) async {
     await Future<void>.delayed(const Duration(milliseconds: 220));
     return const [];
+  }
+
+  @override
+  Future<List<PlaceSummary>> fetchPlaces(AuthenticatedSession session) async {
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    return const [];
+  }
+
+  @override
+  Future<MediaPage<AssetSummary>> fetchPlaceAssetsPage(
+    AuthenticatedSession session, {
+    required PlaceSummary place,
+    AssetSortOrder sortOrder = AssetSortOrder.newestFirst,
+    String? page,
+    int pageSize = 120,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    return const MediaPage(items: []);
   }
 
   @override

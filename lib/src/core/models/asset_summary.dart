@@ -9,6 +9,9 @@ class AssetSummary extends Equatable {
     required this.createdAt,
     this.requiresAuth = true,
     this.hlsUrl,
+    this.city,
+    this.state,
+    this.country,
   });
 
   final String id;
@@ -22,6 +25,11 @@ class AssetSummary extends Equatable {
   /// server supports adaptive streaming; the viewer falls back to the regular
   /// playback URLs if it fails.
   final String? hlsUrl;
+
+  /// Location fields from `exifInfo`, used by Places browsing.
+  final String? city;
+  final String? state;
+  final String? country;
 
   bool get isVideo => type.toUpperCase().contains('VIDEO');
 
@@ -38,5 +46,8 @@ class AssetSummary extends Equatable {
     createdAt,
     requiresAuth,
     hlsUrl,
+    city,
+    state,
+    country,
   ];
 }

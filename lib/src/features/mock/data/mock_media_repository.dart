@@ -5,6 +5,7 @@ import '../../../core/models/asset_summary.dart';
 import '../../../core/models/media_page.dart';
 import '../../../core/models/memory_summary.dart';
 import '../../../core/models/person_summary.dart';
+import '../../../core/models/place_summary.dart';
 import '../../../core/repositories/media_repository.dart';
 
 class MockMediaRepository implements MediaRepository {
@@ -13,13 +14,15 @@ class MockMediaRepository implements MediaRepository {
       _favorites = _buildFavorites(),
       _albums = _buildAlbums(),
       _people = _buildPeople(),
-      _memories = _buildMemories(_buildTimeline());
+      _memories = _buildMemories(_buildTimeline()),
+      _places = _buildPlaces();
 
   final List<AssetSummary> _timeline;
   final List<AssetSummary> _favorites;
   final List<AlbumSummary> _albums;
   final List<PersonSummary> _people;
   final List<MemorySummary> _memories;
+  final List<PlaceSummary> _places;
 
   static const _pageSizeDefault = 60;
 
@@ -39,6 +42,34 @@ class MockMediaRepository implements MediaRepository {
   Future<List<MemorySummary>> fetchMemories(AuthenticatedSession session) async {
     await Future<void>.delayed(const Duration(milliseconds: 280));
     return _memories;
+  }
+
+  @override
+  Future<List<PlaceSummary>> fetchPlaces(AuthenticatedSession session) async {
+    await Future<void>.delayed(const Duration(milliseconds: 280));
+    return _places;
+  }
+
+  @override
+  Future<MediaPage<AssetSummary>> fetchPlaceAssetsPage(
+    AuthenticatedSession session, {
+    required PlaceSummary place,
+    AssetSortOrder sortOrder = AssetSortOrder.newestFirst,
+    String? page,
+    int pageSize = _pageSizeDefault,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 280));
+    final assets = _timeline
+        .where(
+          (asset) =>
+              asset.city == place.city && asset.country == place.country,
+        )
+        .toList(growable: false);
+    return _pageAssets(
+      _sortedAssets(assets, sortOrder),
+      page: page,
+      pageSize: pageSize,
+    );
   }
 
   @override
@@ -219,6 +250,48 @@ List<MemorySummary> _buildMemories(List<AssetSummary> timeline) {
     );
   }
   return List<MemorySummary>.unmodifiable(memories);
+}
+
+List<PlaceSummary> _buildPlaces() {
+  const locations = <Map<String, String>>[
+    {'city': 'Lisbon', 'country': 'Portugal'},
+    {'city': 'Kyoto', 'country': 'Japan'},
+    {'city': 'Vancouver', 'country': 'Canada'},
+    {'city': 'Cape Town', 'country': 'South Africa'},
+  ];
+
+  final places = <PlaceSummary>[];
+  for (var index = 0; index < locations.length; index++) {
+    final location = locations[index];
+    final matching = _buildTimeline()
+        .where((asset) => int.parse(asset.id.split('-').last) % 4 == index)
+        .map(
+          (asset) => AssetSummary(
+            id: asset.id,
+            thumbnailUrls: asset.thumbnailUrls,
+            displayUrls: asset.displayUrls,
+            type: asset.type,
+            createdAt: asset.createdAt,
+            requiresAuth: false,
+            city: location['city'],
+            country: location['country'],
+          ),
+        )
+        .toList(growable: false);
+    if (matching.isEmpty) {
+      continue;
+    }
+    places.add(
+      PlaceSummary(
+        id: '${location['city']}|${location['country']}',
+        city: location['city']!,
+        state: '',
+        country: location['country']!,
+        preview: matching.first,
+      ),
+    );
+  }
+  return List<PlaceSummary>.unmodifiable(places);
 }
 
 List<AssetSummary> _buildFavorites() {

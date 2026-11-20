@@ -5,8 +5,17 @@ import '../../../core/models/asset_sort_order.dart';
 import '../../../core/models/asset_summary.dart';
 import '../../../core/models/memory_summary.dart';
 import '../../../core/models/person_summary.dart';
+import '../../../core/models/place_summary.dart';
 
-enum LibraryTab { timeline, albums, people, favorites, memories, settings }
+enum LibraryTab {
+  timeline,
+  albums,
+  people,
+  favorites,
+  memories,
+  places,
+  settings,
+}
 
 enum LibraryLoadStatus { idle, loading, success, failure }
 
@@ -21,11 +30,13 @@ class LibraryState extends Equatable {
     this.people = const [],
     this.favorites = const [],
     this.memories = const [],
+    this.places = const [],
     this.hasLoadedTimeline = false,
     this.hasLoadedAlbums = false,
     this.hasLoadedPeople = false,
     this.hasLoadedFavorites = false,
     this.hasLoadedMemories = false,
+    this.hasLoadedPlaces = false,
     this.timelineNextPage,
     this.favoritesNextPage,
     this.isLoadingMore = false,
@@ -43,11 +54,13 @@ class LibraryState extends Equatable {
   final List<PersonSummary> people;
   final List<AssetSummary> favorites;
   final List<MemorySummary> memories;
+  final List<PlaceSummary> places;
   final bool hasLoadedTimeline;
   final bool hasLoadedAlbums;
   final bool hasLoadedPeople;
   final bool hasLoadedFavorites;
   final bool hasLoadedMemories;
+  final bool hasLoadedPlaces;
   final String? timelineNextPage;
   final String? favoritesNextPage;
   final bool isLoadingMore;
@@ -69,6 +82,7 @@ class LibraryState extends Equatable {
       LibraryTab.people => false,
       LibraryTab.favorites => hasMoreFavorites,
       LibraryTab.memories => false,
+      LibraryTab.places => false,
       LibraryTab.albums => false,
       LibraryTab.settings => false,
     };
@@ -81,6 +95,7 @@ class LibraryState extends Equatable {
       LibraryTab.people => people,
       LibraryTab.favorites => favorites,
       LibraryTab.memories => memories,
+      LibraryTab.places => places,
       LibraryTab.settings => const <Object>[],
     };
   }
@@ -95,11 +110,13 @@ class LibraryState extends Equatable {
     List<PersonSummary>? people,
     List<AssetSummary>? favorites,
     List<MemorySummary>? memories,
+    List<PlaceSummary>? places,
     bool? hasLoadedTimeline,
     bool? hasLoadedAlbums,
     bool? hasLoadedPeople,
     bool? hasLoadedFavorites,
     bool? hasLoadedMemories,
+    bool? hasLoadedPlaces,
     String? timelineNextPage,
     String? favoritesNextPage,
     bool? isLoadingMore,
@@ -120,11 +137,13 @@ class LibraryState extends Equatable {
       people: people ?? this.people,
       favorites: favorites ?? this.favorites,
       memories: memories ?? this.memories,
+      places: places ?? this.places,
       hasLoadedTimeline: hasLoadedTimeline ?? this.hasLoadedTimeline,
       hasLoadedAlbums: hasLoadedAlbums ?? this.hasLoadedAlbums,
       hasLoadedPeople: hasLoadedPeople ?? this.hasLoadedPeople,
       hasLoadedFavorites: hasLoadedFavorites ?? this.hasLoadedFavorites,
       hasLoadedMemories: hasLoadedMemories ?? this.hasLoadedMemories,
+      hasLoadedPlaces: hasLoadedPlaces ?? this.hasLoadedPlaces,
       timelineNextPage: clearTimelineNextPage
           ? null
           : (timelineNextPage ?? this.timelineNextPage),
@@ -149,11 +168,13 @@ class LibraryState extends Equatable {
     people,
     favorites,
     memories,
+    places,
     hasLoadedTimeline,
     hasLoadedAlbums,
     hasLoadedPeople,
     hasLoadedFavorites,
     hasLoadedMemories,
+    hasLoadedPlaces,
     timelineNextPage,
     favoritesNextPage,
     isLoadingMore,
