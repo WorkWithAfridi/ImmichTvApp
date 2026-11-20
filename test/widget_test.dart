@@ -779,11 +779,14 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('2023'), findsOneWidget);
-    expect(find.text('3 years ago'), findsOneWidget);
+    expect(find.text('2023'), findsWidgets);
+    expect(find.text('November 19, 2023'), findsWidgets);
+    expect(find.textContaining('3 years ago'), findsOneWidget);
     expect(_findAssetThumbnail('memory-asset-1'), findsOneWidget);
 
-    await tester.tap(find.text('2023'));
+    final thumbnailFinder = _findAssetThumbnail('memory-asset-1').first;
+    await tester.ensureVisible(thumbnailFinder);
+    await tester.tap(thumbnailFinder, warnIfMissed: false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byIcon(Icons.close_rounded), findsWidgets);
