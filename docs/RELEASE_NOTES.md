@@ -1,5 +1,17 @@
 # Release Notes
 
+## 1.6.0+22
+
+Highlights for this release:
+
+- **Continuous slideshow** — playback now loads the next paginated page near the end instead of looping over the initially loaded photos.
+- **Places tab** — browse photos by city using Immich's map data, with a location rail and date-grouped grid.
+- **Asset info overlay** — press `i` in the viewer for EXIF data, metadata, and OCR-detected text.
+- **Brand refresh** — animated drawn flower splash, purple accent theme, ambient background, and a quieter near-black palette.
+- **Drawer organization** — Library and Account sections, with a compact profile header on narrow screens.
+- **Display care** — the wallpaper clock drifts slowly to reduce OLED burn-in.
+- **Expanded tests** — coverage for slideshow paging, Places, asset info, and the new splash/theme components.
+
 ## 1.5.0+21
 
 Highlights for this release:

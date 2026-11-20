@@ -80,12 +80,12 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [ ] Validate web deployment behavior for hosted TV browsers and desktop browsers.
 - [ ] Verify desktop builds on macOS, Windows, and Linux.
 - [x] Add release versioning, screenshots, and distribution notes (see `docs/RELEASING.md`).
-- [ ] Prepare a short QA checklist per platform before public testing.
+- [x] Prepare a short QA checklist per platform before public testing (see `docs/RELEASE_CHECKLIST.md`).
 
 ## Immediate Next Slice
 
 - [ ] Measure image memory behavior and scroll smoothness on real TV-class hardware.
-- [ ] Refine thumbnail cache sizing and smarter prefetch windows for large libraries.
+- [x] Refine thumbnail cache sizing and smarter prefetch windows for large libraries.
 - [x] Add retry and degraded-network handling for library browsing (offline banner + manual retry).
 - [x] Extend retry/fallback handling to image playback failures.
 - [x] Release HLS sessions explicitly and add a Settings toggle for the Alpha streaming feature.
