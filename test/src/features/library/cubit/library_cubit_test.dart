@@ -104,6 +104,22 @@ void main() {
     expect(repository.lastFavoritesSortOrder, AssetSortOrder.oldestFirst);
   });
 
+  test('fetchMoreForSlideshow appends and returns the next timeline page',
+      () async {
+    final cubit = LibraryCubit(_FakeMediaRepository(), _session());
+    addTearDown(cubit.close);
+
+    await cubit.loadInitial();
+    final page = await cubit.fetchMoreForSlideshow();
+
+    expect(page.items.map((asset) => asset.id), ['asset-3']);
+    expect(page.hasMore, isFalse);
+    expect(
+      cubit.state.timeline.map((asset) => asset.id),
+      ['asset-1', 'asset-2', 'asset-3'],
+    );
+  });
+
   test('successful load records when the library was last refreshed', () async {
     final cubit = LibraryCubit(_FakeMediaRepository(), _session());
     addTearDown(cubit.close);
