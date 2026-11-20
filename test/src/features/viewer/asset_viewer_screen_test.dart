@@ -29,7 +29,7 @@ void main() {
     expect(find.bySemanticsLabel('Enable HDR playback'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-    for (var index = 0; index < 4; index += 1) {
+    for (var index = 0; index < 5; index += 1) {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     }
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);

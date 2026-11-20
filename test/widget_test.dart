@@ -975,6 +975,14 @@ void main() {
     expect(find.byIcon(Icons.repeat_one_rounded), findsOneWidget);
     expect(find.byIcon(Icons.slideshow_rounded), findsNothing);
     expect(find.byIcon(Icons.close_rounded), findsWidgets);
+
+    final unmuteButton = find.byIcon(Icons.volume_up_rounded);
+    expect(unmuteButton, findsOneWidget);
+    await tester.ensureVisible(unmuteButton);
+    await tester.tap(unmuteButton);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byIcon(Icons.volume_off_rounded), findsOneWidget);
   });
 
   testWidgets('starts a slideshow with playback controls', (tester) async {

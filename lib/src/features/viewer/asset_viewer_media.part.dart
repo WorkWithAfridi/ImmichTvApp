@@ -153,6 +153,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
   bool _showChrome = true;
   bool _isScrubModeActive = false;
   bool _isLooping = true;
+  final ValueNotifier<bool> mutedNotifier = ValueNotifier<bool>(false);
   bool? _wasPlaying;
   List<String> _nativePlayableUrls = const [];
   int _activeNativeUrlIndex = -1;
@@ -181,6 +182,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
         oldWidget.accessToken != widget.accessToken ||
         oldWidget.hdrPlaybackEnabled != widget.hdrPlaybackEnabled) {
       _isScrubModeActive = false;
+      mutedNotifier.value = false;
       unawaited(_restartPlayer());
     }
   }
@@ -196,6 +198,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
     _closeScrubberFocusNode.dispose();
     _endHlsSession();
     _disposeController();
+    mutedNotifier.dispose();
     super.dispose();
   }
 
@@ -361,6 +364,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
         await controller.initialize();
         _isLooping = true;
         await controller.setLooping(_isLooping);
+        await controller.setVolume(mutedNotifier.value ? 0 : 1);
         await controller.play();
         _isInitializingNativeSource = false;
         _registerScrubberHandle();
@@ -467,6 +471,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
     await controller.initialize();
     _isLooping = true;
     await controller.setLooping(_isLooping);
+    await controller.setVolume(mutedNotifier.value ? 0 : 1);
     _registerScrubberHandle();
   }
 
@@ -516,6 +521,18 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
     }
     _registerScrubberHandle();
     await _initializePlayer();
+  }
+
+  Future<void> _toggleMute() async {
+    mutedNotifier.value = !mutedNotifier.value;
+    final controller = _controller;
+    if (controller != null && controller.value.isInitialized) {
+      await controller.setVolume(mutedNotifier.value ? 0 : 1);
+    }
+    if (mounted) {
+      setState(() => _showChrome = true);
+    }
+    _registerScrubberHandle();
   }
 
   Future<void> _togglePlayback() async {
@@ -616,10 +633,12 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
           activate: _activateScrubMode,
           reset: _resetPlayback,
           toggleLooping: _toggleLooping,
+          toggleMute: _toggleMute,
           isAvailable: () => _controller?.value.isInitialized ?? false,
           isPlaying: () => _controller?.value.isPlaying ?? false,
           isScrubModeActive: () => _isScrubModeActive,
           isLooping: () => _isLooping,
+          muted: mutedNotifier,
         ),
       );
     });

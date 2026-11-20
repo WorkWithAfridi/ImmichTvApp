@@ -158,30 +158,45 @@ class _ViewerVideoScrubberHandle {
     required this.activate,
     required this.reset,
     required this.toggleLooping,
+    required this.toggleMute,
     required this.isAvailable,
     required this.isPlaying,
     required this.isScrubModeActive,
     required this.isLooping,
+    required this.muted,
   });
 
   final VoidCallback togglePlayback;
   final VoidCallback activate;
   final VoidCallback reset;
   final VoidCallback toggleLooping;
+  final VoidCallback toggleMute;
   final bool Function() isAvailable;
   final bool Function() isPlaying;
   final bool Function() isScrubModeActive;
   final bool Function() isLooping;
+  final ValueNotifier<bool> muted;
 }
 
 class _AssetViewerViewState extends State<_AssetViewerView> {
   static const _wallpaperClockDebugDelay = Duration(seconds: 10);
   static const _wallpaperClockReleaseDelay = Duration(minutes: 2);
-  static const _slideshowDurationOptions = <int>[5, 8, 12];
+  static const _slideshowDurationOptions = <int>[
+    2,
+    3,
+    5,
+    8,
+    12,
+    20,
+    30,
+    45,
+    60,
+  ];
   late final PageController _pageController;
   late final FocusNode _viewerFocusNode;
   late final FocusNode _slideshowButtonFocusNode;
   late final FocusNode _videoPlayPauseButtonFocusNode;
+  late final FocusNode _videoMuteButtonFocusNode;
   late final FocusNode _videoScrubberButtonFocusNode;
   late final FocusNode _videoResetButtonFocusNode;
   late final FocusNode _videoLoopButtonFocusNode;
@@ -205,6 +220,8 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
   final FocusNode _infoCloseFocusNode = FocusNode(
     debugLabel: 'viewer-info-close',
   );
+  bool _videoMuted = false;
+  int _slideshowDuration = 5;
 
   @override
   void initState() {
@@ -216,6 +233,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
     _videoPlayPauseButtonFocusNode = FocusNode(
       debugLabel: 'viewer-video-play-pause',
     );
+    _videoMuteButtonFocusNode = FocusNode(debugLabel: 'viewer-video-mute');
     _videoScrubberButtonFocusNode = FocusNode(
       debugLabel: 'viewer-video-scrubber',
     );
@@ -228,6 +246,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
     _viewerFocusNode.addListener(_handleFocusChange);
     _slideshowButtonFocusNode.addListener(_handleFocusChange);
     _videoPlayPauseButtonFocusNode.addListener(_handleFocusChange);
+    _videoMuteButtonFocusNode.addListener(_handleFocusChange);
     _videoScrubberButtonFocusNode.addListener(_handleFocusChange);
     _videoResetButtonFocusNode.addListener(_handleFocusChange);
     _videoLoopButtonFocusNode.addListener(_handleFocusChange);
@@ -252,6 +271,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
     _viewerFocusNode.removeListener(_handleFocusChange);
     _slideshowButtonFocusNode.removeListener(_handleFocusChange);
     _videoPlayPauseButtonFocusNode.removeListener(_handleFocusChange);
+    _videoMuteButtonFocusNode.removeListener(_handleFocusChange);
     _videoScrubberButtonFocusNode.removeListener(_handleFocusChange);
     _videoResetButtonFocusNode.removeListener(_handleFocusChange);
     _videoLoopButtonFocusNode.removeListener(_handleFocusChange);
@@ -263,6 +283,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
     _viewerFocusNode.dispose();
     _slideshowButtonFocusNode.dispose();
     _videoPlayPauseButtonFocusNode.dispose();
+    _videoMuteButtonFocusNode.dispose();
     _videoScrubberButtonFocusNode.dispose();
     _videoResetButtonFocusNode.dispose();
     _videoLoopButtonFocusNode.dispose();
@@ -348,6 +369,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
                         itemCount: state.assets.length,
                         onPageChanged: (index) {
                           _registerInteraction();
+                          setState(() => _videoMuted = false);
                           context.read<AssetViewerCubit>().jumpTo(index);
                           _scheduleWallpaperClock();
                         },
@@ -446,6 +468,24 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
                                           _registerInteraction();
                                           _activeVideoScrubberHandle
                                               ?.togglePlayback();
+                                        },
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      _ViewerIconActionButton(
+                                        icon: _videoMuted
+                                            ? Icons.volume_off_rounded
+                                            : Icons.volume_up_rounded,
+                                        enabled: scrubberEnabled,
+                                        focusNode: _videoMuteButtonFocusNode,
+                                        onFocusChange: (_) =>
+                                            _registerInteraction(),
+                                        onPressed: () {
+                                          _registerInteraction();
+                                          setState(
+                                            () => _videoMuted = !_videoMuted,
+                                          );
+                                          _activeVideoScrubberHandle
+                                              ?.toggleMute();
                                         },
                                       ),
                                       const SizedBox(width: AppSpacing.sm),
@@ -629,12 +669,14 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
         photoCount: slideshowAssets.length,
         currentAssetIsVideo: state.currentAsset.isVideo,
         totalAssetCount: state.assets.length,
+        initialDurationSeconds: _slideshowDuration,
       ),
     );
 
     if (!mounted || durationSeconds == null) {
       return;
     }
+    _slideshowDuration = durationSeconds;
 
     final initialSlideshowIndex = slideshowAssets.indexWhere(
       (asset) => asset.id == state.currentAsset.id,
@@ -742,6 +784,11 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
     }
 
     if (_videoPlayPauseButtonFocusNode.hasFocus) {
+      _videoMuteButtonFocusNode.requestFocus();
+      return null;
+    }
+
+    if (_videoMuteButtonFocusNode.hasFocus) {
       _videoScrubberButtonFocusNode.requestFocus();
       return null;
     }
@@ -801,6 +848,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
 
     if (_slideshowButtonFocusNode.hasFocus ||
         _videoPlayPauseButtonFocusNode.hasFocus ||
+        _videoMuteButtonFocusNode.hasFocus ||
         _videoScrubberButtonFocusNode.hasFocus ||
         _videoResetButtonFocusNode.hasFocus ||
         _videoLoopButtonFocusNode.hasFocus ||
@@ -829,6 +877,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
 
     if (_slideshowButtonFocusNode.hasFocus ||
         _videoPlayPauseButtonFocusNode.hasFocus ||
+        _videoMuteButtonFocusNode.hasFocus ||
         _videoScrubberButtonFocusNode.hasFocus ||
         _videoResetButtonFocusNode.hasFocus ||
         _videoLoopButtonFocusNode.hasFocus ||
@@ -886,6 +935,7 @@ class _AssetViewerViewState extends State<_AssetViewerView> {
   bool get _hasAnyActionFocus =>
       _slideshowButtonFocusNode.hasFocus ||
       _videoPlayPauseButtonFocusNode.hasFocus ||
+      _videoMuteButtonFocusNode.hasFocus ||
       _videoScrubberButtonFocusNode.hasFocus ||
       _videoResetButtonFocusNode.hasFocus ||
       _videoLoopButtonFocusNode.hasFocus ||
