@@ -358,9 +358,16 @@ class _Sidebar extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _ProfileHeader(session: session),
+                      _ProfileHeader(
+                        session: session,
+                        compact: width < 260,
+                      ),
                       SizedBox(
                         height: scale.space(AppSpacing.xl, min: 24, max: 32),
+                      ),
+                      const _SidebarSectionLabel(label: 'LIBRARY'),
+                      SizedBox(
+                        height: scale.space(AppSpacing.sm, min: 10, max: 12),
                       ),
                       _SidebarMenuButton(
                         label: 'Timeline',
@@ -473,30 +480,29 @@ class _Sidebar extends StatelessWidget {
                         },
                         focusNode: focusNodes[5],
                       ),
-                      SizedBox(
-                        height: scale.space(AppSpacing.xs, min: 8, max: 8),
-                      ),
-                      _SidebarMenuButton(
-                        label: 'Settings',
-                        subtitle: 'Profile preferences',
-                        icon: Icons.settings_outlined,
-                        isSelected: state.selectedTab == LibraryTab.settings,
-                        onPressed: () {
-                          context.read<LibraryCubit>().selectTab(
-                            LibraryTab.settings,
-                          );
-                          onCloseSidebar(
-                            focusMenuToggle: false,
-                            focusContentTab: LibraryTab.settings,
-                          );
-                        },
-                        focusNode: focusNodes[6],
-                      ),
                     ],
                   ),
                 ),
               ),
+              const Divider(height: 1, color: AppColors.border),
               SizedBox(height: scale.space(AppSpacing.md, min: 14, max: 16)),
+              const _SidebarSectionLabel(label: 'ACCOUNT'),
+              SizedBox(height: scale.space(AppSpacing.sm, min: 10, max: 12)),
+              _SidebarMenuButton(
+                label: 'Settings',
+                subtitle: 'Profile preferences',
+                icon: Icons.settings_outlined,
+                isSelected: state.selectedTab == LibraryTab.settings,
+                onPressed: () {
+                  context.read<LibraryCubit>().selectTab(LibraryTab.settings);
+                  onCloseSidebar(
+                    focusMenuToggle: false,
+                    focusContentTab: LibraryTab.settings,
+                  );
+                },
+                focusNode: focusNodes[6],
+              ),
+              SizedBox(height: scale.space(AppSpacing.xs, min: 6, max: 8)),
               _SidebarActionButton(
                 icon: Icons.switch_account_rounded,
                 label: 'Switch user',
@@ -529,9 +535,10 @@ class _Sidebar extends StatelessWidget {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.session});
+  const _ProfileHeader({required this.session, this.compact = false});
 
   final AuthenticatedSession session;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -551,7 +558,7 @@ class _ProfileHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleAvatar(
-          radius: scale.sizeOf(30, min: 26, max: 30),
+          radius: scale.sizeOf(compact ? 24 : 30, min: 22, max: 30),
           backgroundColor: AppColors.focus,
           foregroundColor: AppColors.actionForeground,
           child: Text(
@@ -575,24 +582,46 @@ class _ProfileHeader extends StatelessWidget {
                 softWrap: false,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
-                  fontSize: scale.text(18, min: 15, max: 18),
+                  fontSize: scale.text(compact ? 16 : 18, min: 15, max: 18),
                 ),
               ),
               const SizedBox(height: AppSpacing.xxs),
-              Text(
-                session.user.email,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: scale.text(12, min: 11, max: 12),
+              Tooltip(
+                message: session.user.email,
+                child: Text(
+                  session.user.email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: scale.text(12, min: 11, max: 12),
+                  ),
                 ),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SidebarSectionLabel extends StatelessWidget {
+  const _SidebarSectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      label,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: AppColors.textMuted,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.6,
+      ),
     );
   }
 }
