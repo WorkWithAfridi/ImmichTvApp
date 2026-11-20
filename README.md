@@ -4,94 +4,86 @@
   <img src="assets/png/banner.png" alt="Immich TV banner" width="860">
 </p>
 
-TV-first Immich client for browsing your self-hosted photo and video library from the couch.
+**Your self-hosted Immich library, built for the living room.**
 
-It connects to your existing Immich server and gives you a living-room experience designed for Android TV and Google TV first, built as a Flutter app for the wider platform matrix.
+Immich TV is a TV-first, read-only client for browsing photos and videos on Android TV and Google TV from the couch. It connects to the Immich server you already run and turns it into a remote-friendly, fullscreen experience — while the same Flutter codebase also builds for web, desktop, and mobile.
 
-## Status
+## Why Immich TV?
 
-Immich TV is actively evolving and already usable as a focused TV browsing client.
-
-Current product direction:
-
-- Android TV / Google TV first
-- Remote-first navigation and focus behavior
-- Read-only browsing and playback
-- Android TV packaging and release polish
-- Better resilience for large libraries and degraded networks
+- **Made for a remote, not a mouse.** Large focus states, predictable arrow-key navigation, an on-screen keyboard for setup, and pointer/keyboard support when you have them.
+- **Read-only by design.** Browsing and playback only, so a shared household TV never becomes a library-management device.
+- **Works with your server, old or new.** Capability detection keeps newer Immich APIs optional instead of required.
+- **Survives imperfect networks.** Retries, cached media, and an offline banner keep the experience calm on flaky Wi-Fi.
 
 ## Features
 
-- Connect to an existing Immich server
-- Sign in with either your Immich login or an API token
-- Save profiles locally for fast re-entry on shared TV devices
-- Protect saved profiles with an optional 4-digit PIN, configurable from Settings
-- Browse timeline assets in a TV-optimized layout
-- Jump between years from a horizontal year rail
-- Open albums, people, favorites, memories, and places
-- Browse person-specific media from the People tab
-- Revisit "On this day" and birthday memories as a fullscreen gallery
-- View photos and videos fullscreen, with adaptive HLS streaming on supported servers
-- Press `i` in the viewer for a read-only info panel with EXIF data, metadata, and OCR text
-- Start slideshow playback directly from the viewer, continuously loading more photos as it goes
-- Use a layout tuned for TV remotes, keyboards, and pointer input
-- Detect the connected Immich server's version and enabled features so newer APIs are used only when supported
-- Keep browsing already-loaded media during brief connection drops, with a retry action when the server returns
-- Switch between live server access and demo content for testing
+### Browse everything, your way
 
-## Platform Focus
+- **Timeline** with a horizontal year rail for instant jumps across large libraries
+- **Albums** with a folder rail and a date-grouped asset grid
+- **People** with face thumbnails and per-person media
+- **Favorites** with sortable, paginated grids
+- **Memories** — "On this day" and birthday memories grouped into one folder per year, with photos grouped by date inside
+- **Places** — browse photos by city using Immich's map data, with location details in each folder
 
-- Primary target: Android TV and Google TV
-- Supported development targets: Android, web, Windows, macOS, and Linux
-- UX priority: large-screen readability, predictable focus movement, and simple playback controls
+### Playback that fits the big screen
+
+- **Fullscreen photos and videos** with clean, screen-safe metadata and transport overlays
+- **Slideshow** with 5/8/12-second intervals, shuffle, pause/resume, and **continuous playback** that keeps loading the next page as you approach the end of the library
+- **Adaptive HLS video** on supported servers, with automatic fallback to transcoded and original sources
+- **Wallpaper mode** with a clock overlay for a calm, ambient display
+
+### Details on demand
+
+- Press **`i`** in the viewer for a read-only info panel: description, camera, capture date, location, filename, metadata, and OCR-detected text
+
+### Profiles and privacy
+
+- Save multiple profiles for quick re-entry on shared TVs
+- Optional 4-digit PIN with a remote-friendly numeric keypad
+- Secrets in platform secure storage; metadata in SharedPreferences
+- Password or personal API-key sign-in
+
+### Built for reliability
+
+- **Server capability handshake** at sign-in (`/server/version`, `/server/media-types`, `/config`) so features only appear when the server supports them
+- **Bounded retries** for transient read and image failures
+- **Offline banner** with manual retry while already-loaded media stays browsable
+- **Opt-in performance HUD** with rebuild counters for large-library tuning
+
+## Status
+
+Actively developed and usable as a focused TV browsing client. The current release line is **1.5.0**.
 
 ## Server Compatibility
 
-On sign-in, Immich TV probes `/server/version`, `/server/media-types`, and `/config` to learn which Immich version is running and which features the administrator has enabled. Newer APIs are used only when the server supports them; if discovery fails, the app falls back to the conservative feature set that works on older servers. Read requests use bounded retries for transient network failures, and the library keeps cached content available with an on-screen retry action when a refresh fails.
+Immich TV probes the server at sign-in and adapts to what it finds. If discovery fails it falls back to a conservative feature set that works on older servers. Memories and Places use their dedicated APIs when available; HLS is an opt-in setting because it is still an Alpha Immich API, and it is limited to native v3+ players with automatic fallback. Streaming sessions are released when playback stops.
 
-Memories use `GET /memories` when the server supports it. Adaptive HLS video is an opt-in setting under Settings → Playback because it is still an Alpha Immich API. It is used only on Immich v3+ native players; if the playlist cannot be opened, playback automatically falls back to the existing transcoded and original sources. Streaming sessions are released when playback stops. Browsers keep using the direct/transcoded sources because native HLS support varies by browser.
+## Quick start
 
-## Tech Stack
-
-- Flutter
-- Dart 3.11
-- `flutter_bloc`
-- Dio
-- `flutter_secure_storage`
-- `shared_preferences`
-- `video_player`
-
-## Current Version
-
-- App version: `1.5.0+21`
-
-## Getting Started
-
-### Requirements
-
-- Flutter SDK
-- An accessible Immich server
-- A target device such as Android TV, Google TV, emulator, or desktop for development
-
-### Run locally
+Requirements: Flutter SDK and an accessible Immich server (or use demo mode).
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-### Quality checks
+Quality checks:
 
 ```bash
 flutter analyze
 flutter test
 ```
 
-## Demo Access
+For a profiling build with the performance HUD:
 
-Immich TV includes a built-in demo mode for testing.
+```bash
+flutter run --dart-define=immichtv.profile=true
+```
 
-Enter this exact server URL in the onboarding flow:
+## Demo mode
+
+Enter this exact server URL in onboarding:
 
 ```text
 https://demo.immichtv.local
@@ -100,52 +92,42 @@ https://demo.immichtv.local
 Then sign in with:
 
 ```text
-Email: demo@immich.tv
+Email:    demo@immich.tv
 Password: demo1234
 ```
 
-Demo content is only triggered when that exact URL is entered.
+Demo mode is only triggered by that exact URL and includes sample albums, people, memories, and places.
 
-## Repository Map
+## Documentation
 
-- `lib/main.dart`: app startup and image cache tuning
-- `lib/app.dart`: dependency wiring, theme setup, repository injection
-- `lib/src/app_shell.dart`: top-level flow between bootstrap, onboarding, profile picker, and home
-- `lib/src/core`: shared models, repositories, networking, services, and logging
-- `lib/src/features`: feature-specific UI, Cubits, and data implementations
-- `lib/src/shared`: shared presentation tokens, focus helpers, and reusable widgets
-- `lib/src/platform`: platform-aware persistence and media adapters
-- `test/`: widget and focused unit coverage
-- `docs/DEVELOPMENT_CHECKLIST.md`: roadmap and current execution slices
+- [Development checklist and roadmap](docs/DEVELOPMENT_CHECKLIST.md)
+- [Android TV packaging guide](docs/ANDROID_TV_PACKAGING.md)
+- [Release process and versioning](docs/RELEASING.md)
+- [Release notes](docs/RELEASE_NOTES.md)
+- [Release and QA checklist](docs/RELEASE_CHECKLIST.md)
 
-## Screens and Branding
+## Tech stack
 
-The repository includes packaged brand assets under `assets/png/`.
+Flutter · Dart 3.11 · flutter_bloc · Dio · video_player · flutter_secure_storage · shared_preferences
 
-- `banner.png`
-- `tv-banner-icon.png`
+## Repository map
+
+- `lib/main.dart` — startup and image cache tuning
+- `lib/app.dart` — dependency wiring and theming
+- `lib/src/app_shell.dart` — bootstrap → onboarding/profile picker → home
+- `lib/src/core` — models, repositories, networking, capability detection, performance
+- `lib/src/features` — feature UI, Cubits, and API implementations
+- `lib/src/shared` — design tokens and reusable TV widgets
+- `lib/src/platform` — platform-aware persistence and media adapters
+- `test/` — unit, widget, and integration coverage
+- `docs/` — roadmap, packaging, and release documentation
 
 ## Roadmap
 
-- Measure and tune scroll smoothness on real TV hardware
-- Add browser-side HLS support for platforms without native playback
-- Profile thumbnail rebuilds on real TV hardware
-- Expand remote-navigation and integration test coverage
-- Finish Android TV packaging and broader platform validation
-- Continue polishing releases and documentation
-
-## Contributing
-
-Contributions, issues, and suggestions are welcome.
-
-If you want to contribute:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run `flutter analyze`
-5. Run `flutter test`
-6. Open a pull request
+- Measure scroll smoothness and image memory on real TV hardware
+- Browser-side HLS support for platforms without native playback
+- Search, "Surprise me", and recently added browsing
+- Broader web and desktop validation
 
 ## Disclaimer
 
@@ -153,6 +135,4 @@ Immich TV is an independent client project and is not an official Immich app. Yo
 
 ## License
 
-This project is licensed under the MIT License.
-
-See [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
