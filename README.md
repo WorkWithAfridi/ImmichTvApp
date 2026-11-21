@@ -15,6 +15,22 @@ Immich TV is a TV-first, read-only client for browsing photos and videos on Andr
 - **Works with your server, old or new.** Capability detection keeps newer Immich APIs optional instead of required.
 - **Survives imperfect networks.** Retries, cached media, and an offline banner keep the experience calm on flaky Wi-Fi.
 
+## Product showcase
+
+Browse a personal library from the couch with a remote-friendly interface. These screenshots show the timeline, library views, and shared-TV profile picker. Personal details and media are blurred in the privacy-focused examples.
+
+| Timeline | People |
+|:---:|:---:|
+| ![Immich TV timeline with year navigation](assets/readme/timeline.png) | ![People gallery with blurred personal details](assets/readme/people.png) |
+
+| Favorites | Memories |
+|:---:|:---:|
+| ![Favorites gallery](assets/readme/favorites.png) | ![Memories screen with blurred media](assets/readme/memories.png) |
+
+| Places | Profiles |
+|:---:|:---:|
+| ![Places gallery](assets/readme/places.png) | ![Profile picker with private profile details blurred](assets/readme/profiles.png) |
+
 ## Features
 
 ### Browse everything, your way
