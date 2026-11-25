@@ -5,6 +5,7 @@ import 'pairing_protocol.dart';
 enum PairingServiceFailure {
   unsupportedPlatform,
   noLocalNetwork,
+  companionUnavailable,
   listenerFailed,
 }
 
@@ -39,6 +40,8 @@ abstract interface class PhonePairingService {
   PairingSnapshot? get snapshot;
 
   Stream<PairingSnapshot?> get updates;
+
+  Stream<PhoneOnboardingInput> get onboardingInputs;
 
   Future<PairingConnection> start();
 

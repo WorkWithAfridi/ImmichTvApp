@@ -1,0 +1,8 @@
+{
+  "name": "immich-tv-phone-companion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

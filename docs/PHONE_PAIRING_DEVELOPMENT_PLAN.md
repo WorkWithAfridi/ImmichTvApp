@@ -1,6 +1,6 @@
 # Phone Pairing and Remote: Development Plan
 
-**Status:** Implementation in progress; prototype only
+**Status:** Phone onboarding implementation in progress; hardware and release gates remain open
 
 **Parent research:** [Phone Pairing and Remote R&D](PHONE_PAIRING_REMOTE_RND.md)
 **Product goal:** Let a user scan a QR code, enter onboarding details on their phone, and later use that paired phone as a TV remote.
@@ -34,9 +34,11 @@ Estimates below are engineering effort for one experienced Flutter engineer, exc
 
 ## Implementation progress
 
-Development is underway on `feature/phone-pairing-remote`. The current prototype contains the onboarding keyboard improvements, an in-memory pairing lifecycle, a TV-hosted local QR preview with explicit TV approval, and a versioned typed remote-command contract with validation and replay/order checks. The phone page currently proves only non-secret pairing status; it does not submit credentials or control the app.
+Development is underway on `feature/phone-pairing-remote`. The branch now contains keyboard improvements, an in-memory pairing lifecycle, an HTTPS phone companion, X25519/HKDF/AES-GCM encrypted credential transfer, TV-side code comparison and approval, onboarding integration for password and API-key sign-in, and the typed remote-command contract. The TV retains server validation and sign-in control; the phone does not receive an Immich session.
 
-The protocol, local listener, UI, and command contract have automated tests. M0 is still open until the listener and browser flow are exercised on supported TV and phone hardware. M1 is still open until the credential transport is selected and its security properties are reviewed. Do not treat the prototype as a production credential channel or a completed milestone.
+Milestone status: M2's pairing and command contracts are implemented with automated coverage. M3's local listener, approval UI, expiry, cancel, and fallback are implemented. M4's encrypted companion and onboarding bridge are implemented and covered by focused tests. M0 remains open pending real Android TV, Android Chrome, and iOS Safari network/permission validation. M1's design is captured in ADR 0001; independent security review remains part of M5. M5 is not complete until platform permission behavior, security review, and a device pilot pass. M6 has a typed command contract only; a live phone remote is not implemented.
+
+The companion static site has a manual GitHub Pages deployment workflow, but deployment and HTTPS-origin verification are still required before the default QR flow can work for users. Do not treat the branch as release-ready until deployment, target-device validation, and the M5 release gate are complete.
 
 ## Trackable milestone breakdown
 

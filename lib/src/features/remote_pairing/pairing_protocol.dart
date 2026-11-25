@@ -245,6 +245,18 @@ class PairingProtocol {
     return snapshot!;
   }
 
+  void verifyBootstrapToken({
+    required String sessionId,
+    required String bootstrapToken,
+  }) {
+    final session = _requireSession(sessionId);
+    _requirePhase(session, PairingPhase.waitingForPhone);
+    if (!_matches(session.bootstrapToken, bootstrapToken)) {
+      _recordFailedCredential(session);
+      throw const PairingProtocolException(PairingFailure.invalidCredential);
+    }
+  }
+
   PairingGrant approve({required String sessionId, String? sessionToken}) {
     final session = _requireSession(sessionId);
     _requirePhase(session, PairingPhase.approvalPending);
@@ -291,12 +303,8 @@ class PairingProtocol {
     required String sessionToken,
     required int sequence,
   }) {
+    requireActiveSession(sessionId: sessionId, sessionToken: sessionToken);
     final session = _requireSession(sessionId);
-    _requirePhase(session, PairingPhase.active);
-    if (!_matches(session.sessionToken, sessionToken)) {
-      _recordFailedCredential(session);
-      throw const PairingProtocolException(PairingFailure.invalidCredential);
-    }
     final lastSequence = session.lastAcceptedSequence;
     if (sequence <= lastSequence) {
       throw const PairingProtocolException(PairingFailure.replayedMessage);
@@ -305,6 +313,18 @@ class PairingProtocol {
       throw const PairingProtocolException(PairingFailure.invalidSequence);
     }
     session.lastAcceptedSequence = sequence;
+  }
+
+  void requireActiveSession({
+    required String sessionId,
+    required String sessionToken,
+  }) {
+    final session = _requireSession(sessionId);
+    _requirePhase(session, PairingPhase.active);
+    if (!_matches(session.sessionToken, sessionToken)) {
+      _recordFailedCredential(session);
+      throw const PairingProtocolException(PairingFailure.invalidCredential);
+    }
   }
 
   void revoke({required String sessionId}) {

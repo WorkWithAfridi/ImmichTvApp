@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:immichtv/src/features/remote_pairing/pairing_crypto.dart';
 
 void main() {
@@ -106,4 +108,91 @@ void main() {
       throwsA(isA<PairingCryptoException>()),
     );
   });
+
+  test('rejects the low-order all-zero X25519 public key', () async {
+    expect(
+      PairingCryptoSession.createForPhone(
+        sessionId: 'invalid-peer-key',
+        tvPublicKeyBytes: List<int>.filled(32, 0),
+      ),
+      throwsA(isA<PairingCryptoException>()),
+    );
+  });
+
+  test(
+    'matches the phone companion Web Crypto interoperability vector',
+    () async {
+      final vector =
+          jsonDecode(
+                await File(
+                  'phone_companion/crypto_test_vectors.json',
+                ).readAsString(),
+              )
+              as Map<String, Object?>;
+      List<int> fromHex(String value) => [
+        for (var i = 0; i < value.length; i += 2)
+          int.parse(value.substring(i, i + 2), radix: 16),
+      ];
+      final x25519 = X25519();
+      final tvKeyPair = await x25519.newKeyPairFromSeed(
+        fromHex(
+          '77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a',
+        ),
+      );
+      final phoneKeyPair = await x25519.newKeyPairFromSeed(
+        fromHex(
+          '5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb',
+        ),
+      );
+      final handshake = await PairingCryptoSession.createForTv(
+        sessionId: vector['sessionId']! as String,
+        keyPair: tvKeyPair,
+      );
+      final phone = await PairingCryptoSession.createForPhone(
+        sessionId: vector['sessionId']! as String,
+        tvPublicKeyBytes: PairingCryptoSession.decodeBytes(
+          vector['tvPublic']! as String,
+        ),
+        keyPair: phoneKeyPair,
+      );
+      final tv = await PairingCryptoSession.deriveForTv(
+        sessionId: vector['sessionId']! as String,
+        tvHandshake: handshake,
+        phonePublicKeyBytes: phone.publicKeyBytes,
+      );
+      addTearDown(() {
+        handshake.destroy();
+        phone.destroy();
+        tv.destroy();
+      });
+
+      expect(
+        PairingCryptoSession.encodeBytes(handshake.publicKeyBytes),
+        vector['tvPublic'],
+      );
+      expect(
+        PairingCryptoSession.encodeBytes(phone.publicKeyBytes),
+        vector['phonePublic'],
+      );
+      expect(await phone.approvalCode(), vector['approvalCode']);
+      expect(
+        PairingCryptoSession.encodeBytes(phone.sessionToken),
+        vector['sessionToken'],
+      );
+
+      final message = EncryptedPairingMessage.fromJson({
+        'v': 1,
+        'type': vector['type'],
+        'sessionId': vector['sessionId'],
+        'seq': vector['sequence'],
+        'nonce': vector['nonce'],
+        'ciphertext': vector['ciphertext'],
+        'tag': vector['tag'],
+      });
+      expect(
+        utf8.decode(await tv.decryptFromPhone(message)),
+        vector['plaintext'],
+      );
+    },
+  );
 }

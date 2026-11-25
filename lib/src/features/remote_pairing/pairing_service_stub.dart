@@ -15,6 +15,9 @@ class _UnsupportedPhonePairingService implements PhonePairingService {
   Stream<PairingSnapshot?> get updates => const Stream.empty();
 
   @override
+  Stream<PhoneOnboardingInput> get onboardingInputs => const Stream.empty();
+
+  @override
   Future<PairingConnection> start() => Future.error(
     const PairingServiceException(PairingServiceFailure.unsupportedPlatform),
   );

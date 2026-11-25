@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
+import 'pairing_crypto.dart';
 import 'pairing_protocol.dart';
 import 'pairing_service.dart';
+import 'phone_pairing_config.dart';
 
 PhonePairingService createPhonePairingService() => IoPhonePairingService();
 
@@ -12,99 +13,32 @@ class IoPhonePairingService implements PhonePairingService {
   IoPhonePairingService({
     PairingProtocol? protocol,
     Future<List<String>> Function()? addressProvider,
+    Uri? companionBaseUri,
+    String? companionOrigin,
   }) : _protocol = protocol ?? PairingProtocol(),
-       _addressProvider = addressProvider;
+       _addressProvider = addressProvider,
+       _companionBaseUri =
+           companionBaseUri ?? Uri.parse(PhonePairingConfig.companionUrl),
+       _companionOrigin =
+           companionOrigin ?? Uri.parse(PhonePairingConfig.companionUrl).origin;
 
-  static const _maxBodyBytes = 8192;
-  static const _page = r'''<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="referrer" content="no-referrer">
-  <title>Connect to Immich TV</title>
-  <style>
-    :root { color-scheme: dark; font: 17px system-ui, sans-serif; background: #101019; color: #f8f7ff; }
-    body { box-sizing: border-box; margin: 0 auto; max-width: 520px; padding: 32px 24px; }
-    main { margin-top: 8vh; padding: 28px; border: 1px solid #454257; border-radius: 22px; background: #1b1a27; }
-    h1 { font-size: 1.6rem; margin-top: 0; }
-    p { line-height: 1.5; color: #cfccdc; }
-    .code { font-size: 2rem; font-weight: 800; letter-spacing: .18em; color: #d4b7ff; }
-    .status { margin-top: 24px; padding: 14px; border-radius: 12px; background: #292738; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Connect to Immich TV</h1>
-    <p id="message" role="status">Checking this one-time pairing request…</p>
-    <p id="code" class="code" aria-label="Verification code"></p>
-    <p id="detail" class="status">Keep this page open while you approve the request on your TV.</p>
-  </main>
-  <script nonce="__NONCE__">
-    (() => {
-      const message = document.getElementById('message');
-      const code = document.getElementById('code');
-      const detail = document.getElementById('detail');
-      const params = new URLSearchParams(location.hash.slice(1));
-      const sessionId = params.get('session');
-      const token = params.get('token');
-      history.replaceState(null, '', location.pathname);
-      if (!sessionId || !token) {
-        message.textContent = 'This pairing link is incomplete. Scan the QR code again.';
-        return;
-      }
-      const send = async (path, body) => {
-        const response = await fetch(path, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          cache: 'no-store',
-          credentials: 'omit',
-          referrerPolicy: 'no-referrer',
-          body: JSON.stringify(body)
-        });
-        if (!response.ok) throw new Error('request_failed');
-        return response.json();
-      };
-      const waitForApproval = async () => {
-        while (true) {
-          await new Promise(resolve => setTimeout(resolve, 1200));
-          const status = await send('/api/status', { sessionId });
-          if (status.phase === 'active') {
-            message.textContent = 'Immich TV approved this phone.';
-            detail.textContent = 'Phone text entry is not enabled in this preview. Continue setup on your TV.';
-            return;
-          }
-          if (status.phase === 'expired' || status.phase === 'revoked' || status.phase === 'stopped') {
-            message.textContent = status.phase === 'expired'
-              ? 'This pairing request expired. Start a new request on your TV.'
-              : 'This pairing request was closed on your TV.';
-            detail.textContent = 'You can close this page.';
-            return;
-          }
-        }
-      };
-      send('/api/pair', { sessionId, bootstrapToken: token })
-        .then(async result => {
-          message.textContent = 'Compare this code with the code shown on your TV.';
-          code.textContent = result.verificationCode;
-          await waitForApproval();
-        })
-        .catch(() => {
-          message.textContent = 'Could not reach the TV. Check that both devices are on the same network, then scan again.';
-          detail.textContent = 'Guest Wi-Fi or router device isolation can block phone-to-TV connections.';
-        });
-    })();
-  </script>
-</body>
-</html>''';
-
+  static const _maxBodyBytes = 24 * 1024;
+  static const _apiPaths = {'/api/pair', '/api/status', '/api/input'};
   final PairingProtocol _protocol;
   final Future<List<String>> Function()? _addressProvider;
+  final Uri _companionBaseUri;
+  final String _companionOrigin;
   final StreamController<PairingSnapshot?> _updates =
       StreamController<PairingSnapshot?>.broadcast();
+  final StreamController<PhoneOnboardingInput> _onboardingInputs =
+      StreamController<PhoneOnboardingInput>.broadcast();
   HttpServer? _server;
   PairingSnapshot? _snapshot;
   List<String> _allowedHosts = const [];
+  PairingCryptoHandshake? _cryptoHandshake;
+  PairingCryptoSession? _cryptoSession;
+  Timer? _expiryTimer;
+  bool _pairRequestPending = false;
 
   @override
   bool get isSupported => true;
@@ -116,11 +50,17 @@ class IoPhonePairingService implements PhonePairingService {
   Stream<PairingSnapshot?> get updates => _updates.stream;
 
   @override
+  Stream<PhoneOnboardingInput> get onboardingInputs => _onboardingInputs.stream;
+
+  @override
   Future<PairingConnection> start() async {
     if (_server != null) {
       throw const PairingServiceException(PairingServiceFailure.listenerFailed);
     }
 
+    _validateCompanionUri();
+    _expiryTimer?.cancel();
+    _destroyCrypto();
     final addresses =
         await (_addressProvider?.call() ?? _findPrivateIpv4Addresses());
     if (addresses.isEmpty) {
@@ -128,38 +68,46 @@ class IoPhonePairingService implements PhonePairingService {
     }
 
     final invitation = _protocol.start();
+    HttpServer? server;
     try {
-      final server = await HttpServer.bind(
+      final handshake = await PairingCryptoSession.createForTv(
+        sessionId: invitation.sessionId,
+      );
+      _cryptoHandshake = handshake;
+      final boundServer = await HttpServer.bind(
         InternetAddress.anyIPv4,
         0,
         shared: false,
       );
-      _server = server;
+      server = boundServer;
+      _server = boundServer;
       _allowedHosts = addresses;
-      server.listen(_handleRequest, onError: (_) {});
+      boundServer.listen(_handleRequest, onError: (_) {});
 
       final manualUris = addresses
-          .map(
-            (address) => Uri(
+          .map((address) {
+            final endpoint = Uri(
               scheme: 'http',
               host: address,
-              port: server.port,
-              path: '/',
-            ),
-          )
+              port: boundServer.port,
+            );
+            final invite = {
+              'v': PairingCryptoSession.protocolVersion,
+              'sessionId': invitation.sessionId,
+              'bootstrapToken': invitation.bootstrapToken,
+              'endpoint': endpoint.origin,
+              'tvPublicKey': PairingCryptoSession.encodeBytes(
+                handshake.publicKeyBytes,
+              ),
+            };
+            final fragment = PairingCryptoSession.encodeBytes(
+              utf8.encode(jsonEncode(invite)),
+            );
+            return _companionBaseUri.replace(fragment: fragment);
+          })
           .toList(growable: false);
-      final qrUri = Uri(
-        scheme: 'http',
-        host: addresses.first,
-        port: server.port,
-        path: '/',
-        fragment: Uri(
-          queryParameters: {
-            'session': invitation.sessionId,
-            'token': invitation.bootstrapToken,
-          },
-        ).query,
-      );
+      final qrUri = manualUris.first;
+      _scheduleExpiry(invitation.expiresAt);
       _publish(_protocol.snapshot);
       return PairingConnection(
         invitation: invitation,
@@ -168,8 +116,11 @@ class IoPhonePairingService implements PhonePairingService {
       );
     } catch (_) {
       _protocol.stop();
+      _cryptoHandshake?.destroy();
+      _cryptoHandshake = null;
       _server = null;
       _allowedHosts = const [];
+      await server?.close(force: true);
       throw const PairingServiceException(PairingServiceFailure.listenerFailed);
     }
   }
@@ -180,7 +131,17 @@ class IoPhonePairingService implements PhonePairingService {
     if (sessionId == null) {
       throw const PairingProtocolException(PairingFailure.noSession);
     }
-    _protocol.approve(sessionId: sessionId);
+    final cryptoSession = _cryptoSession;
+    if (cryptoSession == null) {
+      throw const PairingServiceException(PairingServiceFailure.listenerFailed);
+    }
+    final grant = _protocol.approve(
+      sessionId: sessionId,
+      sessionToken: PairingCryptoSession.encodeBytes(
+        cryptoSession.sessionToken,
+      ),
+    );
+    _scheduleExpiry(grant.expiresAt);
     return _publish(_protocol.snapshot)!;
   }
 
@@ -191,13 +152,17 @@ class IoPhonePairingService implements PhonePairingService {
       throw const PairingProtocolException(PairingFailure.noSession);
     }
     _protocol.deny(sessionId: sessionId);
+    _destroyCrypto();
+    _expiryTimer?.cancel();
     return _publish(_protocol.snapshot)!;
   }
 
   @override
   Future<void> stop() async {
+    _expiryTimer?.cancel();
     _protocol.stop();
     _publish(_protocol.snapshot);
+    _destroyCrypto();
     final server = _server;
     _server = null;
     _allowedHosts = const [];
@@ -208,6 +173,7 @@ class IoPhonePairingService implements PhonePairingService {
   Future<void> dispose() async {
     await stop();
     await _updates.close();
+    await _onboardingInputs.close();
   }
 
   Future<void> _handleRequest(HttpRequest request) async {
@@ -218,30 +184,36 @@ class IoPhonePairingService implements PhonePairingService {
       });
       return;
     }
-
-    if (request.method == 'GET' && request.uri.path == '/') {
-      final nonce = _randomNonce();
-      request.response.headers.contentType = ContentType.html;
-      request.response.headers.set(
-        'content-security-policy',
-        "default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-$nonce'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-      );
-      request.response.write(_page.replaceFirst('__NONCE__', nonce));
-      await request.response.close();
-      return;
-    }
-
-    if (request.method != 'POST' ||
-        (request.uri.path != '/api/pair' &&
-            request.uri.path != '/api/status')) {
-      await _respond(request.response, HttpStatus.notFound, {
-        'error': 'not_found',
+    if (!_isAllowedOrigin(request)) {
+      await _respond(request.response, HttpStatus.forbidden, {
+        'error': 'origin',
       });
       return;
     }
-    if (!_isSameOrigin(request)) {
-      await _respond(request.response, HttpStatus.forbidden, {
-        'error': 'origin',
+    _applyCorsHeaders(request.response);
+
+    if (request.method == 'OPTIONS') {
+      if (!_apiPaths.contains(request.uri.path) ||
+          request.uri.hasQuery ||
+          request.headers.value('access-control-request-method') != 'POST' ||
+          request.headers
+                  .value('access-control-request-headers')
+                  ?.toLowerCase() !=
+              'content-type') {
+        await _respond(request.response, HttpStatus.forbidden, {
+          'error': 'preflight',
+        });
+        return;
+      }
+      request.response.statusCode = HttpStatus.noContent;
+      await request.response.close();
+      return;
+    }
+    if (request.method != 'POST' ||
+        !_apiPaths.contains(request.uri.path) ||
+        request.uri.hasQuery) {
+      await _respond(request.response, HttpStatus.notFound, {
+        'error': 'not_found',
       });
       return;
     }
@@ -262,10 +234,13 @@ class IoPhonePairingService implements PhonePairingService {
       return;
     }
 
-    if (request.uri.path == '/api/pair') {
-      await _handlePairRequest(request.response, body);
-    } else {
-      await _handleStatusRequest(request.response, body);
+    switch (request.uri.path) {
+      case '/api/pair':
+        await _handlePairRequest(request.response, body);
+      case '/api/status':
+        await _handleStatusRequest(request.response, body);
+      case '/api/input':
+        await _handleInputRequest(request.response, body);
     }
   }
 
@@ -275,27 +250,66 @@ class IoPhonePairingService implements PhonePairingService {
   ) async {
     final sessionId = body['sessionId'];
     final token = body['bootstrapToken'];
-    if (sessionId is! String || token is! String) {
+    final phonePublicKey = body['phonePublicKey'];
+    if (body.length != 3 ||
+        sessionId is! String ||
+        token is! String ||
+        phonePublicKey is! String) {
       await _respond(response, HttpStatus.badRequest, {
         'error': 'invalid_message',
       });
       return;
     }
+    if (_pairRequestPending) {
+      await _respond(response, HttpStatus.conflict, {'error': 'pairing_busy'});
+      return;
+    }
+    _pairRequestPending = true;
+    PairingCryptoSession? cryptoSession;
     try {
-      final snapshot = _protocol.requestApproval(
+      _protocol.verifyBootstrapToken(
         sessionId: sessionId,
         bootstrapToken: token,
       );
+      final handshake = _cryptoHandshake;
+      if (handshake == null || handshake.sessionId != sessionId) {
+        await _respond(response, HttpStatus.conflict, {
+          'error': 'pairing_unavailable',
+        });
+        return;
+      }
+      cryptoSession = await PairingCryptoSession.deriveForTv(
+        sessionId: sessionId,
+        tvHandshake: handshake,
+        phonePublicKeyBytes: PairingCryptoSession.decodeBytes(phonePublicKey),
+      );
+      final code = await cryptoSession.approvalCode();
+      final snapshot = _protocol.requestApproval(
+        sessionId: sessionId,
+        bootstrapToken: token,
+        verificationCode: code,
+      );
+      _cryptoSession = cryptoSession;
+      _cryptoHandshake = null;
       _publish(snapshot);
-      await _respond(response, HttpStatus.ok, {
-        'phase': snapshot.phase.name,
-        'verificationCode': snapshot.verificationCode,
-      });
+      await _respond(response, HttpStatus.ok, {'phase': snapshot.phase.name});
     } on PairingProtocolException catch (error) {
+      if (cryptoSession != null) {
+        _cryptoHandshake = null;
+        cryptoSession.destroy();
+      }
       final status = error.failure == PairingFailure.rateLimited
           ? HttpStatus.tooManyRequests
           : HttpStatus.forbidden;
       await _respond(response, status, {'error': error.failure.name});
+    } on PairingCryptoException catch (error) {
+      await _respond(response, HttpStatus.badRequest, {'error': error.code});
+    } on Object {
+      await _respond(response, HttpStatus.badRequest, {
+        'error': 'invalid_message',
+      });
+    } finally {
+      _pairRequestPending = false;
     }
   }
 
@@ -317,6 +331,68 @@ class IoPhonePairingService implements PhonePairingService {
     await _respond(response, HttpStatus.ok, {'phase': snapshot.phase.name});
   }
 
+  Future<void> _handleInputRequest(
+    HttpResponse response,
+    Map<String, Object?> body,
+  ) async {
+    final PairingCryptoSession? cryptoSession = _cryptoSession;
+    final sessionId = body['sessionId'];
+    final sequence = body['seq'];
+    if (cryptoSession == null ||
+        sessionId is! String ||
+        sessionId != cryptoSession.sessionId ||
+        sequence is! int ||
+        body['type'] != 'onboardingInput') {
+      await _respond(response, HttpStatus.badRequest, {
+        'error': 'invalid_message',
+      });
+      return;
+    }
+
+    try {
+      final sessionToken = PairingCryptoSession.encodeBytes(
+        cryptoSession.sessionToken,
+      );
+      _protocol.requireActiveSession(
+        sessionId: sessionId,
+        sessionToken: sessionToken,
+      );
+      final message = EncryptedPairingMessage.fromJson(body);
+      final plaintext = await cryptoSession.decryptFromPhone(message);
+      _protocol.acceptSequence(
+        sessionId: sessionId,
+        sessionToken: sessionToken,
+        sequence: sequence,
+      );
+      try {
+        final decoded = jsonDecode(utf8.decode(plaintext));
+        if (decoded is! Map<String, Object?>) {
+          throw const PairingProtocolException(PairingFailure.invalidMessage);
+        }
+        final input = PhoneOnboardingInput.fromJson(decoded);
+        if (!_onboardingInputs.isClosed) _onboardingInputs.add(input);
+      } finally {
+        plaintext.fillRange(0, plaintext.length, 0);
+      }
+      await _respond(response, HttpStatus.ok, {'accepted': true});
+    } on PairingCryptoException catch (error) {
+      await _respond(response, HttpStatus.badRequest, {'error': error.code});
+    } on PairingProtocolException catch (error) {
+      final status = error.failure == PairingFailure.rateLimited
+          ? HttpStatus.tooManyRequests
+          : HttpStatus.forbidden;
+      await _respond(response, status, {'error': error.failure.name});
+    } on FormatException {
+      await _respond(response, HttpStatus.badRequest, {
+        'error': 'invalid_message',
+      });
+    } on Object {
+      await _respond(response, HttpStatus.badRequest, {
+        'error': 'invalid_message',
+      });
+    }
+  }
+
   Future<Map<String, Object?>> _readJsonBody(HttpRequest request) async {
     if (request.contentLength > _maxBodyBytes) {
       throw const FormatException('Request too large.');
@@ -336,21 +412,30 @@ class IoPhonePairingService implements PhonePairingService {
   }
 
   bool _isAllowedHost(HttpRequest request) {
-    final host = request.headers.host;
+    final authority = request.headers.host;
     final port = _server?.port;
-    if (host == null || port == null) return false;
+    if (authority == null || port == null) return false;
+    final uri = Uri.tryParse('http://$authority');
+    if (uri == null || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+      return false;
+    }
+    // Some embedded HTTP clients omit the non-default port from Host. The
+    // socket's local port is authoritative; keep the hostname allowlist exact.
     return request.connectionInfo?.localPort == port &&
-        _allowedHosts.contains(host);
+        (uri.port == port || uri.port == 80) &&
+        _allowedHosts.contains(uri.host);
   }
 
-  bool _isSameOrigin(HttpRequest request) {
-    final origin = request.headers.value('origin');
-    if (origin == null) return false;
-    final host = request.headers.host;
-    final port = request.connectionInfo?.localPort;
-    return host != null &&
-        port != null &&
-        origin == Uri(scheme: 'http', host: host, port: port).origin;
+  bool _isAllowedOrigin(HttpRequest request) =>
+      request.headers.value('origin') == _companionOrigin;
+
+  void _applyCorsHeaders(HttpResponse response) {
+    response.headers
+      ..set('access-control-allow-origin', _companionOrigin)
+      ..set('access-control-allow-methods', 'POST, OPTIONS')
+      ..set('access-control-allow-headers', 'content-type')
+      ..set('access-control-max-age', '120')
+      ..set('vary', 'Origin');
   }
 
   void _applySecurityHeaders(HttpResponse response) {
@@ -359,6 +444,42 @@ class IoPhonePairingService implements PhonePairingService {
       ..set('referrer-policy', 'no-referrer')
       ..set(HttpHeaders.cacheControlHeader, 'no-store, max-age=0')
       ..set('x-frame-options', 'DENY');
+  }
+
+  void _validateCompanionUri() {
+    if (_companionBaseUri.scheme != 'https' ||
+        _companionBaseUri.host.isEmpty ||
+        _companionBaseUri.userInfo.isNotEmpty ||
+        _companionBaseUri.query.isNotEmpty ||
+        _companionBaseUri.hasFragment ||
+        _companionBaseUri.origin != _companionOrigin) {
+      throw const PairingServiceException(
+        PairingServiceFailure.companionUnavailable,
+      );
+    }
+  }
+
+  void _scheduleExpiry(DateTime expiresAt) {
+    _expiryTimer?.cancel();
+    final delay = expiresAt.difference(DateTime.now());
+    _expiryTimer = Timer(delay.isNegative ? Duration.zero : delay, () {
+      final snapshot = _protocol.snapshot;
+      _publish(snapshot);
+      if (snapshot == null ||
+          snapshot.phase == PairingPhase.expired ||
+          snapshot.phase == PairingPhase.revoked) {
+        _destroyCrypto();
+        return;
+      }
+      _scheduleExpiry(snapshot.expiresAt);
+    });
+  }
+
+  void _destroyCrypto() {
+    _cryptoHandshake?.destroy();
+    _cryptoHandshake = null;
+    _cryptoSession?.destroy();
+    _cryptoSession = null;
   }
 
   Future<void> _respond(
@@ -377,10 +498,6 @@ class IoPhonePairingService implements PhonePairingService {
     if (!_updates.isClosed) _updates.add(snapshot);
     return snapshot;
   }
-
-  String _randomNonce() => base64Url
-      .encode(List<int>.generate(18, (_) => Random.secure().nextInt(256)))
-      .replaceAll('=', '');
 
   Future<List<String>> _findPrivateIpv4Addresses() async {
     final interfaces = await NetworkInterface.list(

@@ -1,0 +1,57 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #101019;
+  color: #f8f7ff;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --surface: #1b1a27;
+  --surface-raised: #252333;
+  --border: #454257;
+  --muted: #cfccdc;
+  --accent: #c9a7ff;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; padding: max(22px, env(safe-area-inset-top)) 18px max(26px, env(safe-area-inset-bottom)); }
+.shell { width: min(100%, 540px); margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 14px; margin: 14px 2px 22px; }
+.brand-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; color: #171321; background: linear-gradient(145deg, #dfcaff, #9c76e8); font-size: 26px; font-weight: 900; }
+.eyebrow { margin: 0 0 3px; color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+h1 { margin: 0; font-size: clamp(21px, 5vw, 27px); letter-spacing: -.025em; }
+.card { margin: 14px 0; padding: 24px; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); box-shadow: 0 14px 40px #0002; }
+.status-icon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 16px; border-radius: 14px; background: #342a49; color: var(--accent); font-size: 22px; }
+h2 { margin: 0; font-size: 20px; letter-spacing: -.015em; }
+.muted { color: var(--muted); line-height: 1.55; }
+.card > .muted { margin: 9px 0 0; }
+.verification { display: grid; gap: 4px; margin: 20px 0 8px; padding: 16px; border-radius: 16px; background: var(--surface-raised); text-align: center; color: var(--muted); font-size: 14px; }
+.verification strong { color: var(--accent); font-size: 32px; letter-spacing: .2em; }
+button { min-height: 52px; width: 100%; border: 0; border-radius: 14px; font: inherit; font-size: 16px; font-weight: 750; cursor: pointer; }
+.primary { margin-top: 20px; color: #191425; background: linear-gradient(110deg, #dbc7ff, #ad8bea); }
+.primary:disabled { opacity: .6; cursor: wait; }
+.help { margin: 13px 0 0; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.5; }
+.form-card { padding: 22px; }
+.section-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 22px; }
+.section-heading .muted { margin: 5px 0 0; font-size: 14px; }
+.step { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 12px; color: var(--accent); background: #342a49; font-weight: 800; }
+label, legend { display: block; margin: 16px 0 8px; font-size: 14px; font-weight: 700; }
+input[type="url"], input[type="email"], input[type="password"] { width: 100%; min-height: 52px; padding: 13px 14px; border: 1px solid #565268; border-radius: 12px; outline: none; background: #14131e; color: #fff; font: inherit; font-size: 16px; }
+input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px #c9a7ff36; }
+button:focus-visible, a:focus-visible { outline: 3px solid #f3eaff; outline-offset: 3px; }
+fieldset { margin: 20px 0 4px; padding: 0; border: 0; }
+fieldset legend { margin-bottom: 8px; }
+.choice { display: flex; align-items: flex-start; gap: 12px; margin: 8px 0; padding: 14px; border: 1px solid #49465a; border-radius: 14px; background: var(--surface-raised); cursor: pointer; }
+.choice input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: #bd9bf5; }
+.choice span { display: grid; gap: 4px; }
+.choice small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.privacy-note { display: flex; gap: 9px; margin: 18px 0 0; color: #d3c5ed; font-size: 13px; line-height: 1.5; }
+.privacy-note span { color: #9de0bc; }
+.error { padding: 12px; border-radius: 12px; color: #ffd0c8; background: #482925; font-size: 14px; line-height: 1.45; }
+footer { margin: 24px 4px 0; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.5; }
+footer p { margin: 0 0 6px; }
+footer a { color: var(--accent); }
+[hidden] { display: none !important; }
+
+@media (min-width: 480px) { body { padding-right: 24px; padding-left: 24px; } .card { padding: 28px; } }
+@media (prefers-reduced-motion: no-preference) { button { transition: filter 120ms ease, transform 120ms ease; } button:active { transform: scale(.99); } }

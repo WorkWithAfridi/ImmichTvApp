@@ -1,0 +1,14 @@
+{
+  "description": "Public RFC 7748 X25519 test keys reused only for crypto interoperability tests.",
+  "sessionId": "interop-v1-test",
+  "tvPublic": "hSDwCYkwp1R0i33ctD73Wg2_Og0mOBr066SpjqqbTmo",
+  "phonePublic": "3p7bfXt9wbTTW2HC7OQ1Nz-DQ8hbeGdNrfx-FG-IK08",
+  "sessionToken": "eVifd244LoGu2f5miZKMr2TzZVsoQIYVfM0_Vw21I3M",
+  "approvalCode": "657107",
+  "nonce": "AAECAwQFBgcICQoL",
+  "type": "onboardingInput",
+  "sequence": 1,
+  "plaintext": "{\"v\":1,\"type\":\"onboardingInput\",\"serverUrl\":\"https://photos.example.com\",\"authMethod\":\"apiKey\",\"apiKey\":\"test-key\"}",
+  "ciphertext": "m5ZOwsn6kZiXwaGq-VAZaTNrrInxug4alwVVX5OXcKyOizEX8Ig8cFf2vmMrfIvGi9lgErvqNTYzpari-4dcoPXSxdWnQ_5vmRujR0Q1YuJJdZExEfgUpVfhjFG_bNwTHi29IbIxI0gS-HKQtEESGHME_Q",
+  "tag": "vecrcHZNupSRd1DNV7q_Uw"
+}

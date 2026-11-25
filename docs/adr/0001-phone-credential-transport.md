@@ -12,7 +12,7 @@ The phone browser also cannot depend on Bluetooth. A public HTTPS page calling a
 
 ## Decision
 
-Use a small, static companion page served from a maintainer-controlled HTTPS origin. It connects directly to the TV's ephemeral local HTTP endpoint. The QR contains the companion URL and a one-time bootstrap payload in the URL fragment. The bootstrap payload includes the TV address/port, pairing ID, bootstrap capability, protocol version, and the TV's ephemeral P-256 ECDH public key.
+Use a small, static companion page served from a maintainer-controlled HTTPS origin. It connects directly to the TV's ephemeral local HTTP endpoint. The QR contains the companion URL and a one-time bootstrap payload in the URL fragment. The bootstrap payload includes the TV address/port, pairing ID, bootstrap capability, protocol version, and the TV's ephemeral X25519 public key.
 
 The TV keeps its ECDH private key in memory. After scanning, the phone generates a fresh X25519 key pair and sends its public key with the one-time bootstrap capability. Both sides derive the same session key with X25519, HKDF-SHA-256, and AES-256-GCM. Associated data binds protocol version, pairing ID, direction, and monotonically increasing sequence. Every credential-bearing message is encrypted on the phone before it reaches the LAN. The TV derives the same key, verifies the AEAD tag, validates the message schema, and forwards the values only to the existing onboarding flow.
 
@@ -45,7 +45,7 @@ The same derived key protects the acknowledgement and subsequent typed remote co
 3. Require an explicit phone gesture before the first local-network request. Implement exact CORS allowlisting for the configured origin, a narrow `OPTIONS` response, exact Host validation, strict content types, body limits, and no wildcard origins.
 4. Use the `cryptography` Dart package's X25519, HKDF, and AES-GCM APIs plus Web Crypto on the browser. Feature-detect Web Crypto X25519 before starting; keep TV keyboard entry available when a browser lacks support. Keep algorithms and encodings pinned in a versioned protocol and verify cross-language test vectors.
 5. Permit credential submission only after explicit TV approval and successful authentication of the active session. Do not return Immich tokens, profile secrets, or server responses to the phone.
-6. Keep HTTP pairing preview non-secret-only until the secure companion origin and encrypted protocol are configured. Do not label the existing HTTP preview secure.
+6. Keep credential entry disabled until the secure companion origin and encrypted protocol are configured. Do not serve credential-entry JavaScript from the TV's local HTTP listener.
 7. Validate on Android Chrome and iOS Safari, including local-network permission prompts, CORS preflight, credential round trips, network denial, and failure fallback before release.
 
 ## Consequences

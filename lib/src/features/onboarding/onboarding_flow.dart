@@ -18,6 +18,7 @@ import 'widgets/onboarding_input_method.dart';
 import 'widgets/onboarding_input_selector.dart';
 import 'widgets/onboarding_shell.dart';
 import '../remote_pairing/pairing_service_factory.dart';
+import '../remote_pairing/pairing_protocol.dart';
 import '../remote_pairing/phone_pairing_dialog.dart';
 
 class OnboardingFlow extends StatefulWidget {
@@ -245,8 +246,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onPrimaryAction: () =>
                           _handlePrimaryAction(context, state),
                       onSkipPin: () => _handleSkipPin(context, state),
-                      onPhonePairingPreview: () =>
-                          _showPhonePairingPreview(context),
+                      onPhoneSetup: () => _showPhoneSetup(context),
                     ),
             );
           },
@@ -255,16 +255,55 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     );
   }
 
-  Future<void> _showPhonePairingPreview(BuildContext context) async {
+  Future<void> _showPhoneSetup(BuildContext context) async {
     final service = createPhonePairingService();
+    final onboardingCubit = context.read<OnboardingCubit>();
     try {
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => PhonePairingDialog(service: service),
+        builder: (_) => PhonePairingDialog(
+          service: service,
+          onInputReceived: (input) =>
+              _applyPhoneOnboardingInput(onboardingCubit, input),
+        ),
       );
     } finally {
       await service.dispose();
+    }
+  }
+
+  Future<void> _applyPhoneOnboardingInput(
+    OnboardingCubit onboardingCubit,
+    PhoneOnboardingInput input,
+  ) async {
+    final authMethod = input.authMethod == 'apiKey'
+        ? ImmichAuthMethod.apiKey
+        : ImmichAuthMethod.password;
+    _serverController.text = input.serverUrl;
+    _emailController.text = input.email ?? '';
+    _passwordController.text = input.password ?? '';
+    _apiKeyController.text = input.apiKey ?? '';
+
+    await onboardingCubit.validateServer(input.serverUrl);
+    if (!mounted) return;
+
+    if (onboardingCubit.state.step == OnboardingStep.authMethod &&
+        onboardingCubit.state.serverConfig != null) {
+      onboardingCubit.selectAuthMethod(authMethod);
+      setState(() {
+        _activeKeyboardField = authMethod == ImmichAuthMethod.apiKey
+            ? OnboardingKeyboardField.apiKey
+            : OnboardingKeyboardField.email;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          (authMethod == ImmichAuthMethod.apiKey
+                  ? _apiKeyFieldFocusNode
+                  : _emailFieldFocusNode)
+              .requestFocus();
+        }
+      });
     }
   }
 

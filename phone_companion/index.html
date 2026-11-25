@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="referrer" content="no-referrer">
+    <meta name="color-scheme" content="dark">
+    <meta http-equiv="Cache-Control" content="no-store, max-age=0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' http:; form-action 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'">
+    <title>Immich TV setup</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">I</div>
+        <div>
+          <p class="eyebrow">IMMICH TV</p>
+          <h1>Set up with your phone</h1>
+        </div>
+      </header>
+
+      <section class="card" aria-live="polite">
+        <div id="statusIcon" class="status-icon" aria-hidden="true">↔</div>
+        <h2 id="statusTitle">Ready to connect</h2>
+        <p id="statusMessage" class="muted">This page sends setup details directly to your TV over your local network. Your credentials are encrypted before they leave this phone.</p>
+        <div id="verification" class="verification" hidden>
+          <span>Match this code with the code on your TV</span>
+          <strong id="verificationCode" aria-label="Pairing verification code"></strong>
+        </div>
+        <button id="connectButton" class="primary" type="button">Connect to TV</button>
+        <p id="helpMessage" class="help">Keep this page open. You will need to approve the connection on your TV.</p>
+      </section>
+
+      <form id="setupForm" class="card form-card" autocomplete="off" hidden>
+        <div class="section-heading">
+          <span class="step">01</span>
+          <div><h2>Your Immich server</h2><p class="muted">Use the same server address you use in Immich.</p></div>
+        </div>
+        <label for="serverUrl">Server URL</label>
+        <input id="serverUrl" name="serverUrl" type="url" inputmode="url" placeholder="https://photos.example.com" autocomplete="url" autocapitalize="none" spellcheck="false" required maxlength="2048">
+
+        <fieldset>
+          <legend>Sign-in method</legend>
+          <label class="choice"><input type="radio" name="authMethod" value="password" checked><span><strong>Email and password</strong><small>Sign in with your Immich account.</small></span></label>
+          <label class="choice"><input type="radio" name="authMethod" value="apiKey"><span><strong>API key</strong><small>Use a personal API key from your Immich server.</small></span></label>
+        </fieldset>
+
+        <div id="passwordFields" class="credential-fields">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" inputmode="email" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="320">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" maxlength="4096">
+        </div>
+        <div id="apiKeyFields" class="credential-fields" hidden>
+          <label for="apiKey">Personal API key</label>
+          <input id="apiKey" name="apiKey" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="4096">
+        </div>
+
+        <p class="privacy-note"><span aria-hidden="true">●</span> Your password or API key is encrypted on this phone before it is sent to the TV. This page does not store your details.</p>
+        <button id="sendButton" class="primary" type="submit">Send setup details to TV</button>
+        <p id="formError" class="error" role="alert" hidden></p>
+      </form>
+
+      <footer>
+        <p>Having trouble? Continue setup with the keyboard on your TV.</p>
+        <a href="https://github.com/WorkWithAfridi/immich_tv_app" rel="noreferrer">Immich TV project</a>
+      </footer>
+    </main>
+  </body>
+</html>

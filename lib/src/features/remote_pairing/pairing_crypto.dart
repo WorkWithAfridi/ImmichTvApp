@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 
-/// The shared P-256/HKDF/AES-GCM session keys for one QR pairing attempt.
+/// The shared X25519/HKDF/AES-GCM session keys for one QR pairing attempt.
 ///
 /// The companion page uses the same wire formats and derives the same keys
 /// with Web Crypto. Keep changes synchronized with `phone_companion/crypto.js`.
@@ -47,12 +47,13 @@ class PairingCryptoSession {
   /// Starts the TV side of a pairing handshake and creates the QR public key.
   static Future<PairingCryptoHandshake> createForTv({
     required String sessionId,
+    KeyPair? keyPair,
   }) async {
-    final keyPair = await _x25519.newKeyPair();
-    final publicKey = await keyPair.extractPublicKey();
+    final localKeyPair = keyPair ?? await _x25519.newKeyPair();
+    final publicKey = await localKeyPair.extractPublicKey() as SimplePublicKey;
     return PairingCryptoHandshake(
       sessionId: sessionId,
-      keyPair: keyPair,
+      keyPair: localKeyPair,
       publicKeyBytes: publicKey.bytes,
     );
   }
@@ -63,6 +64,9 @@ class PairingCryptoSession {
     required PairingCryptoHandshake tvHandshake,
     required List<int> phonePublicKeyBytes,
   }) async {
+    if (tvHandshake.sessionId != sessionId) {
+      throw const PairingCryptoException('invalid_session');
+    }
     final phonePublicKey = _decodePublicKey(phonePublicKeyBytes);
     return _derive(
       sessionId: sessionId,
@@ -78,9 +82,11 @@ class PairingCryptoSession {
   static Future<PairingCryptoSession> createForPhone({
     required String sessionId,
     required List<int> tvPublicKeyBytes,
+    KeyPair? keyPair,
   }) async {
-    final phoneKeyPair = await _x25519.newKeyPair();
-    final phonePublicKey = await phoneKeyPair.extractPublicKey();
+    final phoneKeyPair = keyPair ?? await _x25519.newKeyPair();
+    final phonePublicKey =
+        await phoneKeyPair.extractPublicKey() as SimplePublicKey;
     final tvPublicKey = _decodePublicKey(tvPublicKeyBytes);
     return _derive(
       sessionId: sessionId,
@@ -267,6 +273,13 @@ class PairingCryptoSession {
       keyPair: localKeyPair,
       remotePublicKey: remotePublicKey,
     );
+    final sharedBytes = (await sharedSecret.extractBytes()).toList();
+    if (sharedBytes.every((byte) => byte == 0)) {
+      sharedBytes.fillRange(0, sharedBytes.length, 0);
+      sharedSecret.destroy();
+      throw const PairingCryptoException('invalid_public_key');
+    }
+    sharedBytes.fillRange(0, sharedBytes.length, 0);
     final keyMaterial = await _hkdf.deriveKey(
       secretKey: sharedSecret,
       nonce: utf8.encode('$_hkdfSaltPrefix$sessionId'),

@@ -10,9 +10,14 @@ import 'pairing_protocol.dart';
 import 'pairing_service.dart';
 
 class PhonePairingDialog extends StatefulWidget {
-  const PhonePairingDialog({super.key, required this.service});
+  const PhonePairingDialog({
+    super.key,
+    required this.service,
+    required this.onInputReceived,
+  });
 
   final PhonePairingService service;
+  final Future<void> Function(PhoneOnboardingInput input) onInputReceived;
 
   @override
   State<PhonePairingDialog> createState() => _PhonePairingDialogState();
@@ -20,6 +25,7 @@ class PhonePairingDialog extends StatefulWidget {
 
 class _PhonePairingDialogState extends State<PhonePairingDialog> {
   StreamSubscription<PairingSnapshot?>? _subscription;
+  StreamSubscription<PhoneOnboardingInput>? _inputSubscription;
   PairingConnection? _connection;
   PairingSnapshot? _snapshot;
   PairingServiceFailure? _serviceFailure;
@@ -32,14 +38,25 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
     _subscription = widget.service.updates.listen((snapshot) {
       if (mounted) setState(() => _snapshot = snapshot);
     });
+    _inputSubscription = widget.service.onboardingInputs.listen(_receiveInput);
     unawaited(_start());
   }
 
   @override
   void dispose() {
     _subscription?.cancel();
-    unawaited(widget.service.stop());
+    _inputSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _receiveInput(PhoneOnboardingInput input) async {
+    try {
+      await widget.onInputReceived(input);
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _serviceFailure = PairingServiceFailure.listenerFailed);
+    }
   }
 
   Future<void> _start() async {
@@ -113,7 +130,7 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Pair a phone',
+                'Set up with your phone',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -121,7 +138,7 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Scan this code with a phone on the same home network. The phone can request pairing; this TV must approve it.',
+                'Scan this code with your phone camera. Both devices need to be on the same home network. Check the verification code before approving the connection.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
@@ -151,7 +168,7 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'Or open this address manually:',
+                  'Or open this secure pairing link on your phone:',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -197,7 +214,7 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
               ],
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Pairing preview only. Phone text entry is not enabled yet; you can continue setup with the TV keyboard.',
+                'Your setup details are encrypted before they leave your phone. Sign-in and profile saving stay on this TV.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textMuted,
@@ -289,6 +306,8 @@ class _PairingFailureMessage extends StatelessWidget {
         'Phone pairing is not supported on this platform. Continue with the device keyboard.',
       PairingServiceFailure.noLocalNetwork =>
         'The TV has no usable private IPv4 network address. Connect it to the same Wi-Fi or wired network as your phone, then try again.',
+      PairingServiceFailure.companionUnavailable =>
+        'Phone setup is not configured for this build. Continue on the TV or contact the app maintainer.',
       PairingServiceFailure.listenerFailed =>
         'The TV could not start its local pairing service. Check the local network permission and try again.',
     };

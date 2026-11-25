@@ -1,6 +1,6 @@
 # Phone Pairing and Remote: R&D and Delivery Plan
 
-**Status:** Proposed architecture; prototype implementation is in progress
+**Status:** Architecture selected; phone onboarding implementation is in progress
 
 **Product target:** Android TV / Google TV first; browser-based phone companion
 
@@ -8,7 +8,7 @@
 
 For sequenced work packages, estimates, dependencies, and exit criteria, see the [development plan](PHONE_PAIRING_DEVELOPMENT_PLAN.md).
 
-The selected credential channel is recorded in [ADR 0001](adr/0001-phone-credential-transport.md). Credential entry remains disabled until its cross-language protocol and trusted HTTPS companion implementation pass review.
+The selected credential channel is recorded in [ADR 0001](adr/0001-phone-credential-transport.md). The branch implements the cross-language protocol and phone onboarding flow; browser/device validation and independent security review remain release gates.
 
 ## Recommendation
 
