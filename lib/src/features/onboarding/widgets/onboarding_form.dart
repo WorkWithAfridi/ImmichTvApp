@@ -61,6 +61,7 @@ class OnboardingForm extends StatelessWidget {
     required this.onEmailNext,
     required this.onPrimaryAction,
     required this.onSkipPin,
+    required this.onPhonePairingPreview,
   });
 
   final ThemeData theme;
@@ -99,6 +100,7 @@ class OnboardingForm extends StatelessWidget {
   final VoidCallback onEmailNext;
   final VoidCallback onPrimaryAction;
   final VoidCallback onSkipPin;
+  final VoidCallback onPhonePairingPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -463,6 +465,14 @@ class OnboardingForm extends StatelessWidget {
                     ),
                   ],
                 ],
+              ),
+            ],
+            if (isServerStep || isCredentialsStep) ...[
+              SizedBox(height: fieldSpacing),
+              TextButton.icon(
+                onPressed: !isSubmitting ? onPhonePairingPreview : null,
+                icon: const Icon(Icons.qr_code_2_rounded),
+                label: const Text('Pair phone (preview)'),
               ),
             ],
           ],

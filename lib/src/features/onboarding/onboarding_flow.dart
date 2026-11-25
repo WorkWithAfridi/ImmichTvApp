@@ -17,6 +17,8 @@ import 'widgets/onboarding_form.dart';
 import 'widgets/onboarding_input_method.dart';
 import 'widgets/onboarding_input_selector.dart';
 import 'widgets/onboarding_shell.dart';
+import '../remote_pairing/pairing_service_factory.dart';
+import '../remote_pairing/phone_pairing_dialog.dart';
 
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key});
@@ -243,12 +245,27 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       onPrimaryAction: () =>
                           _handlePrimaryAction(context, state),
                       onSkipPin: () => _handleSkipPin(context, state),
+                      onPhonePairingPreview: () =>
+                          _showPhonePairingPreview(context),
                     ),
             );
           },
         ),
       ),
     );
+  }
+
+  Future<void> _showPhonePairingPreview(BuildContext context) async {
+    final service = createPhonePairingService();
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => PhonePairingDialog(service: service),
+      );
+    } finally {
+      await service.dispose();
+    }
   }
 
   Future<void> _handlePrimaryAction(
