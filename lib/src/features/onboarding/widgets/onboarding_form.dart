@@ -196,6 +196,9 @@ class OnboardingForm extends StatelessWidget {
                   focusNode: serverFieldFocusNode,
                   enabled: !isSubmitting,
                   textInputAction: TextInputAction.done,
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  enableSuggestions: false,
                   style: fieldTextStyle,
                   readOnly: usesAccessoryInput,
                   keyboardFocusNode: serverKeyboardFocusNode,
@@ -261,6 +264,9 @@ class OnboardingForm extends StatelessWidget {
                     nextFocusNode: passwordFieldFocusNode,
                     enabled: !isSubmitting,
                     textInputAction: TextInputAction.next,
+                    keyboardType: TextInputType.emailAddress,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     style: fieldTextStyle,
                     readOnly: usesAccessoryInput,
                     keyboardFocusNode: emailKeyboardFocusNode,
@@ -293,6 +299,8 @@ class OnboardingForm extends StatelessWidget {
                     previousFocusNode: emailFieldFocusNode,
                     enabled: !isSubmitting,
                     obscureText: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
                     style: fieldTextStyle,
                     textInputAction: TextInputAction.next,
                     readOnly: usesAccessoryInput,
@@ -334,6 +342,8 @@ class OnboardingForm extends StatelessWidget {
                           nextFocusNode: apiKeyPasteFocusNode,
                           enabled: !isSubmitting,
                           textInputAction: TextInputAction.done,
+                          autocorrect: false,
+                          enableSuggestions: false,
                           style: fieldTextStyle,
                           readOnly: usesAccessoryInput,
                           keyboardFocusNode: apiKeyKeyboardFocusNode,
@@ -469,6 +479,9 @@ class _OnboardingTextField extends StatelessWidget {
     required this.enabled,
     required this.textInputAction,
     required this.decoration,
+    this.keyboardType,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
     this.previousFocusNode,
     this.nextFocusNode,
     this.style,
@@ -485,6 +498,9 @@ class _OnboardingTextField extends StatelessWidget {
   final FocusNode? nextFocusNode;
   final bool enabled;
   final TextInputAction textInputAction;
+  final TextInputType? keyboardType;
+  final bool autocorrect;
+  final bool enableSuggestions;
   final InputDecoration decoration;
   final TextStyle? style;
   final ValueChanged<String>? onSubmitted;
@@ -524,6 +540,9 @@ class _OnboardingTextField extends StatelessWidget {
           showCursor: true,
           obscureText: obscureText,
           textInputAction: textInputAction,
+          keyboardType: keyboardType,
+          autocorrect: autocorrect,
+          enableSuggestions: enableSuggestions,
           style: style,
           onSubmitted: onSubmitted,
           decoration: decoration,
@@ -540,6 +559,9 @@ class _OnboardingTextField extends StatelessWidget {
         showCursor: true,
         obscureText: obscureText,
         textInputAction: textInputAction,
+        keyboardType: keyboardType,
+        autocorrect: autocorrect,
+        enableSuggestions: enableSuggestions,
         style: style,
         onSubmitted: onSubmitted,
         decoration: decoration,
@@ -554,6 +576,9 @@ class _OnboardingTextField extends StatelessWidget {
       showCursor: true,
       obscureText: obscureText,
       textInputAction: textInputAction,
+      keyboardType: keyboardType,
+      autocorrect: autocorrect,
+      enableSuggestions: enableSuggestions,
       style: style,
       onSubmitted: onSubmitted,
       decoration: decoration,

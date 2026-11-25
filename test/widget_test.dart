@@ -196,6 +196,92 @@ void main() {
     expect(find.textContaining('apikey@example.com'), findsOneWidget);
   });
 
+  testWidgets('device keyboard can enter an API key and submit sign-in', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final authRepository = FakeAuthRepository();
+    await tester.pumpWidget(
+      ImmichTvApp(
+        authRepository: authRepository,
+        assetImageRepository: FakeAssetImageRepository(),
+        serverRepository: FakeServerRepository(),
+        mediaRepository: FakeMediaRepository(),
+      ),
+    );
+    await _settleAppFlow(tester);
+    await _advancePastInputSelection(
+      tester,
+      method: OnboardingInputMethod.nativeKeyboard,
+    );
+
+    final serverField = find.widgetWithText(TextField, 'Immich server URL');
+    expect(
+      tester.widget<TextField>(serverField).keyboardType,
+      TextInputType.url,
+    );
+    await tester.enterText(serverField, 'https://photos.example.com');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('API Key'));
+    await tester.pumpAndSettle();
+
+    final apiKeyField = find.widgetWithText(TextField, 'API key');
+    final apiKeyInput = tester.widget<TextField>(apiKeyField);
+    expect(apiKeyInput.readOnly, isFalse);
+    expect(apiKeyInput.autocorrect, isFalse);
+    expect(apiKeyInput.enableSuggestions, isFalse);
+    const apiKey = 'personal-token-123';
+    await tester.enterText(apiKeyField, apiKey);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(authRepository.lastApiKey, apiKey);
+    expect(find.text('Create a 4-digit PIN'), findsOneWidget);
+    await _tapKeyboardAction(tester, 'Skip');
+    expect(find.text('Timeline'), findsWidgets);
+  });
+
+  testWidgets('screen keyboard key activation edits the API key field', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ImmichTvApp(
+        authRepository: FakeAuthRepository(),
+        assetImageRepository: FakeAssetImageRepository(),
+        serverRepository: FakeServerRepository(),
+        mediaRepository: FakeMediaRepository(),
+      ),
+    );
+    await _settleAppFlow(tester);
+    await _advancePastInputSelection(tester);
+    await _tapKeyboardAction(tester, 'Next');
+    await tester.tap(find.text('API Key'));
+    await tester.pumpAndSettle();
+
+    final apiKeyField = find.widgetWithText(TextField, 'API key');
+    final controller = tester.widget<TextField>(apiKeyField).controller!;
+    controller.clear();
+    await tester.pump();
+
+    final keyFinder = find.descendant(
+      of: find.byType(OnScreenKeyboard),
+      matching: find.text('q'),
+    );
+    await tester.tap(keyFinder.first);
+    await tester.pumpAndSettle();
+
+    expect(controller.text, 'q');
+  });
+
   testWidgets('supports remote-only auth entry with the on-screen keyboard', (
     tester,
   ) async {
@@ -490,6 +576,8 @@ void main() {
     );
     final serverField = tester.widget<TextField>(serverFieldFinder);
     expect(serverField.readOnly, isFalse);
+    expect(serverField.keyboardType, TextInputType.url);
+    expect(serverField.autocorrect, isFalse);
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
       contains('serverField'),
@@ -579,6 +667,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final emailFieldFinder = find.widgetWithText(TextField, 'Email');
+    expect(
+      tester.widget<TextField>(emailFieldFinder).keyboardType,
+      TextInputType.emailAddress,
+    );
+    expect(tester.widget<TextField>(emailFieldFinder).autocorrect, isFalse);
     await tester.tap(emailFieldFinder);
     await tester.pumpAndSettle();
     await tester.enterText(emailFieldFinder, 'keyboard@example.com');
@@ -593,6 +686,8 @@ void main() {
     final passwordFieldFinder = find.widgetWithText(TextField, 'Password');
     final passwordField = tester.widget<TextField>(passwordFieldFinder);
     expect(passwordField.readOnly, isFalse);
+    expect(passwordField.autocorrect, isFalse);
+    expect(passwordField.enableSuggestions, isFalse);
 
     await tester.enterText(passwordFieldFinder, 'secret-password');
     await tester.pumpAndSettle();
@@ -1174,6 +1269,7 @@ class FakeAuthRepository implements AuthRepository {
   FakeAuthRepository({this.restoredSession});
 
   final AuthenticatedSession? restoredSession;
+  String? lastApiKey;
 
   @override
   Future<AuthenticatedSession> signIn({
@@ -1193,6 +1289,7 @@ class FakeAuthRepository implements AuthRepository {
     required ServerConfig serverConfig,
     required String apiKey,
   }) async {
+    lastApiKey = apiKey;
     return AuthenticatedSession(
       serverConfig: serverConfig,
       accessToken: apiKey,
