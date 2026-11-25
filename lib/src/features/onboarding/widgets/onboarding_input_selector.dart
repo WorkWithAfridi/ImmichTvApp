@@ -16,14 +16,18 @@ class OnboardingInputSelector extends StatelessWidget {
     required this.selectedMethod,
     required this.tvFocusNode,
     required this.nativeFocusNode,
+    required this.phoneFocusNode,
     required this.onMethodSelected,
+    required this.onPhoneSetup,
   });
 
   final ThemeData theme;
   final OnboardingInputMethod selectedMethod;
   final FocusNode tvFocusNode;
   final FocusNode nativeFocusNode;
+  final FocusNode phoneFocusNode;
   final ValueChanged<OnboardingInputMethod> onMethodSelected;
+  final VoidCallback onPhoneSetup;
 
   @override
   Widget build(BuildContext context) {
@@ -46,19 +50,29 @@ class OnboardingInputSelector extends StatelessWidget {
             onInvoke: (intent) {
               switch (intent.direction) {
                 case TraversalDirection.left:
-                  if (nativeFocusNode.hasFocus) {
+                  if (phoneFocusNode.hasFocus) {
+                    nativeFocusNode.requestFocus();
+                  } else if (nativeFocusNode.hasFocus) {
                     tvFocusNode.requestFocus();
                   }
                 case TraversalDirection.right:
                   if (tvFocusNode.hasFocus) {
                     nativeFocusNode.requestFocus();
+                  } else if (nativeFocusNode.hasFocus) {
+                    phoneFocusNode.requestFocus();
                   }
                 case TraversalDirection.down:
                   if (tvFocusNode.hasFocus) {
                     nativeFocusNode.requestFocus();
+                  } else if (nativeFocusNode.hasFocus) {
+                    phoneFocusNode.requestFocus();
                   }
                 case TraversalDirection.up:
-                  break;
+                  if (phoneFocusNode.hasFocus) {
+                    nativeFocusNode.requestFocus();
+                  } else if (nativeFocusNode.hasFocus) {
+                    tvFocusNode.requestFocus();
+                  }
               }
               return null;
             },
@@ -118,7 +132,28 @@ class OnboardingInputSelector extends StatelessWidget {
                         onMoveLeft: isStacked
                             ? null
                             : () => tvFocusNode.requestFocus(),
+                        onMoveRight: isStacked
+                            ? null
+                            : () => phoneFocusNode.requestFocus(),
                         onMoveUp: () => tvFocusNode.requestFocus(),
+                        onMoveDown: () => phoneFocusNode.requestFocus(),
+                      ),
+                    ),
+                    SizedBox(
+                      width: cardWidth,
+                      child: _InputMethodCard(
+                        focusNode: phoneFocusNode,
+                        title: 'Use phone',
+                        description:
+                            'Pair your phone and enter the server URL and credentials on its screen. Best when you only have the TV remote.',
+                        icon: Icons.qr_code_2_rounded,
+                        selected: false,
+                        onPressed: onPhoneSetup,
+                        onMoveLeft: isStacked
+                            ? null
+                            : () => nativeFocusNode.requestFocus(),
+                        onMoveRight: null,
+                        onMoveUp: () => nativeFocusNode.requestFocus(),
                         onMoveDown: null,
                       ),
                     ),

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../core/models/immich_auth_method.dart';
 import '../../../shared/presentation/app_colors.dart';
 import '../../../shared/presentation/app_durations.dart';
+import '../../../shared/presentation/app_focus_decoration.dart';
 import '../../../shared/presentation/app_radii.dart';
 import '../../../shared/presentation/app_scale.dart';
 import '../../../shared/presentation/app_spacing.dart';
@@ -54,6 +55,7 @@ class OnboardingForm extends StatelessWidget {
     required this.apiKeyKeyboardFocusNode,
     required this.pinKeyboardFocusNode,
     required this.confirmPinKeyboardFocusNode,
+    required this.phoneSetupFocusNode,
     required this.isConfirmingPin,
     required this.activeKeyboardField,
     required this.inputMethod,
@@ -93,6 +95,7 @@ class OnboardingForm extends StatelessWidget {
   final FocusNode apiKeyKeyboardFocusNode;
   final FocusNode pinKeyboardFocusNode;
   final FocusNode confirmPinKeyboardFocusNode;
+  final FocusNode phoneSetupFocusNode;
   final bool isConfirmingPin;
   final OnboardingKeyboardField? activeKeyboardField;
   final OnboardingInputMethod inputMethod;
@@ -191,11 +194,19 @@ class OnboardingForm extends StatelessWidget {
               SizedBox(height: fieldSpacing),
             ],
             if (isServerStep) ...[
+              _PhoneSetupButton(
+                focusNode: phoneSetupFocusNode,
+                enabled: !isSubmitting,
+                onPressed: onPhoneSetup,
+                nextFocusNode: serverFieldFocusNode,
+              ),
+              SizedBox(height: fieldSpacing),
               _ScaledFieldWidth(
                 widthFactor: fieldWidthFactor,
                 child: _OnboardingTextField(
                   controller: serverController,
                   focusNode: serverFieldFocusNode,
+                  previousFocusNode: phoneSetupFocusNode,
                   enabled: !isSubmitting,
                   textInputAction: TextInputAction.done,
                   keyboardType: TextInputType.url,
@@ -256,13 +267,22 @@ class OnboardingForm extends StatelessWidget {
                 ),
               ),
             ] else if (isCredentialsStep) ...[
+              _PhoneSetupButton(
+                focusNode: phoneSetupFocusNode,
+                enabled: !isSubmitting,
+                onPressed: onPhoneSetup,
+                nextFocusNode: isPasswordMode
+                    ? emailFieldFocusNode
+                    : apiKeyFieldFocusNode,
+              ),
+              SizedBox(height: fieldSpacing),
               if (isPasswordMode) ...[
                 _ScaledFieldWidth(
                   widthFactor: fieldWidthFactor,
                   child: _OnboardingTextField(
                     controller: emailController,
                     focusNode: emailFieldFocusNode,
-                    previousFocusNode: passwordAuthMethodFocusNode,
+                    previousFocusNode: phoneSetupFocusNode,
                     nextFocusNode: passwordFieldFocusNode,
                     enabled: !isSubmitting,
                     textInputAction: TextInputAction.next,
@@ -340,7 +360,7 @@ class OnboardingForm extends StatelessWidget {
                         child: _OnboardingTextField(
                           controller: apiKeyController,
                           focusNode: apiKeyFieldFocusNode,
-                          previousFocusNode: apiKeyAuthMethodFocusNode,
+                          previousFocusNode: phoneSetupFocusNode,
                           nextFocusNode: apiKeyPasteFocusNode,
                           enabled: !isSubmitting,
                           textInputAction: TextInputAction.done,
@@ -467,16 +487,81 @@ class OnboardingForm extends StatelessWidget {
                 ],
               ),
             ],
-            if (isServerStep || isCredentialsStep) ...[
-              SizedBox(height: fieldSpacing),
-              TextButton.icon(
-                onPressed: !isSubmitting ? onPhoneSetup : null,
-                icon: const Icon(Icons.qr_code_2_rounded),
-                label: const Text('Set up with your phone'),
-              ),
-            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PhoneSetupButton extends StatelessWidget {
+  const _PhoneSetupButton({
+    required this.focusNode,
+    required this.enabled,
+    required this.onPressed,
+    required this.nextFocusNode,
+  });
+
+  final FocusNode focusNode;
+  final bool enabled;
+  final VoidCallback onPressed;
+  final FocusNode nextFocusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scale = AppScale.of(context);
+
+    return Focus(
+      onKeyEvent: (_, event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.arrowDown) {
+          nextFocusNode.requestFocus();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: TvFocusable(
+        focusNode: focusNode,
+        enabled: enabled,
+        onPressed: enabled ? onPressed : null,
+        builder: (_, state) {
+          return AnimatedContainer(
+            duration: AppDurations.normal,
+            padding: EdgeInsets.symmetric(
+              horizontal: scale.space(16, min: 12, max: 20),
+              vertical: scale.space(10, min: 8, max: 14),
+            ),
+            decoration: AppFocusDecoration.surface(
+              isFocused: state.isFocused,
+              isActive: state.isActive,
+              backgroundColor: AppColors.backgroundElevated,
+              activeBackgroundColor: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(
+                scale.radius(AppRadii.md, min: 12, max: 18),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.qr_code_2_rounded,
+                  color: AppColors.textPrimary,
+                  size: scale.sizeOf(20, min: 18, max: 22),
+                ),
+                SizedBox(width: scale.space(8, min: 6, max: 10)),
+                Text(
+                  'Set up with your phone',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: scale.text(15, min: 13, max: 17),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

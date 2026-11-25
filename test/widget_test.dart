@@ -45,6 +45,39 @@ void main() {
 
     expect(find.text('Screen keyboard'), findsOneWidget);
     expect(find.text('Device keyboard'), findsOneWidget);
+    expect(find.text('Use phone'), findsOneWidget);
+  });
+
+  testWidgets('phone setup button is reachable with the remote on the server step', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ImmichTvApp(
+        authRepository: FakeAuthRepository(),
+        assetImageRepository: FakeAssetImageRepository(),
+        serverRepository: FakeServerRepository(),
+        mediaRepository: FakeMediaRepository(),
+      ),
+    );
+    await _settleAppFlow(tester);
+    await _advancePastInputSelection(tester);
+
+    expect(find.text('Set up with your phone'), findsOneWidget);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('serverField'),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('form.phoneSetup'),
+    );
   });
 
   testWidgets('shows the saved profile picker when profiles exist', (
@@ -523,8 +556,22 @@ void main() {
       contains('inputMethod.native'),
     );
 
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('inputMethod.phone'),
+    );
+
     // Another down press at the bottom card is a no-op.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('inputMethod.phone'),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pumpAndSettle();
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
@@ -617,8 +664,7 @@ void main() {
         contains('inputMethod.native'),
       );
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
-      await tester.pumpAndSettle();
+      // The default focused card is already the device keyboard.
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
 

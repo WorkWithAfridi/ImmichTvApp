@@ -17,7 +17,7 @@ import 'widgets/onboarding_form.dart';
 import 'widgets/onboarding_input_method.dart';
 import 'widgets/onboarding_input_selector.dart';
 import 'widgets/onboarding_shell.dart';
-import '../remote_pairing/pairing_service_factory.dart';
+import '../remote_pairing/pairing_service.dart';
 import '../remote_pairing/pairing_protocol.dart';
 import '../remote_pairing/phone_pairing_dialog.dart';
 
@@ -56,6 +56,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final _nativeInputMethodFocusNode = FocusNode(
     debugLabel: 'inputMethod.native',
   );
+  final _phoneInputMethodFocusNode = FocusNode(
+    debugLabel: 'inputMethod.phone',
+  );
+  final _phoneSetupFocusNode = FocusNode(debugLabel: 'form.phoneSetup');
   late final List<TextEditingController> _pinDigitControllers;
   late final List<TextEditingController> _confirmPinDigitControllers;
   late final List<FocusNode> _pinDigitFocusNodes;
@@ -152,6 +156,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     _confirmPinKeyboardFocusNode.dispose();
     _tvInputMethodFocusNode.dispose();
     _nativeInputMethodFocusNode.dispose();
+    _phoneInputMethodFocusNode.dispose();
+    _phoneSetupFocusNode.dispose();
     for (final focusNode in _pinDigitFocusNodes) {
       focusNode.dispose();
     }
@@ -203,7 +209,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       selectedMethod: _inputMethod,
                       tvFocusNode: _tvInputMethodFocusNode,
                       nativeFocusNode: _nativeInputMethodFocusNode,
+                      phoneFocusNode: _phoneInputMethodFocusNode,
                       onMethodSelected: _handleInitialInputMethodSelected,
+                      onPhoneSetup: () => _showPhoneSetup(context),
                     )
                   : OnboardingForm(
                       theme: Theme.of(context),
@@ -240,6 +248,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       isConfirmingPin: _isConfirmingPin,
                       activeKeyboardField: _activeKeyboardField,
                       inputMethod: _inputMethod,
+                      phoneSetupFocusNode: _phoneSetupFocusNode,
                       onAuthMethodChanged: (authMethod) =>
                           _handleAuthMethodChanged(context, authMethod),
                       onEmailNext: _focusPasswordField,
@@ -256,21 +265,27 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _showPhoneSetup(BuildContext context) async {
-    final service = createPhonePairingService();
+    // The service is owned by the app shell so an approved setup session can
+    // continue as a remote session after sign-in.
+    final service = context.read<PhonePairingService>();
     final onboardingCubit = context.read<OnboardingCubit>();
-    try {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => PhonePairingDialog(
-          service: service,
-          onInputReceived: (input) =>
-              _applyPhoneOnboardingInput(onboardingCubit, input),
-        ),
-      );
-    } finally {
-      await service.dispose();
-    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PhonePairingDialog(
+        service: service,
+        mode: PhonePairingMode.setup,
+        onInputReceived: (input) async {
+          // Phone setup can be started from the input-method selector as well
+          // as from the form, so make sure the form is actually shown once the
+          // phone has delivered the details.
+          if (!_hasSelectedInputMethod && mounted) {
+            setState(() => _hasSelectedInputMethod = true);
+          }
+          await _applyPhoneOnboardingInput(onboardingCubit, input);
+        },
+      ),
+    );
   }
 
   Future<void> _applyPhoneOnboardingInput(
