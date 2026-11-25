@@ -1,6 +1,10 @@
 # Phone Pairing and Remote: R&D and Delivery Plan
 
-**Status:** Architecture selected; phone onboarding implementation is in progress
+**Status:** TV-hosted local companion implemented; phone onboarding and phone remote MVP complete; security review and device/release gates remain open
+
+## Current implementation
+
+The shipped flow is intentionally simpler than the original recommendation below: the TV hosts the companion page itself on its LAN address, scanning the QR connects the phone immediately, and multiple phones can control the TV concurrently. The transport is plain HTTP on the trusted local network; it is not encrypted and is not described as secure credential transport. The TV remains the authority for server validation, sign-in, and profile saving. The original R&D notes and ADR 0001 describe the superseded HTTPS-encrypted option and are retained for context.
 
 **Product target:** Android TV / Google TV first; browser-based phone companion
 
@@ -8,7 +12,7 @@
 
 For sequenced work packages, estimates, dependencies, and exit criteria, see the [development plan](PHONE_PAIRING_DEVELOPMENT_PLAN.md).
 
-The selected credential channel is recorded in [ADR 0001](adr/0001-phone-credential-transport.md). The branch implements the cross-language protocol and phone onboarding flow; browser/device validation and independent security review remain release gates.
+[ADR 0001](adr/0001-phone-credential-transport.md) records the original HTTPS-with-encryption decision. The implemented flow uses the TV-hosted local option instead; browser/device validation and independent security review remain release gates.
 
 ## Recommendation
 
@@ -21,7 +25,7 @@ There is one release gate before transferring passwords or API keys: implement a
 Recommended decision sequence:
 
 1. Prototype local server reachability and browser behavior on target hardware with non-secret test data.
-2. Implement the selected transport: a trusted HTTPS companion connecting to a narrowly scoped TV endpoint, with QR-pinned ephemeral public-key encryption for payloads. Keep an on-TV fallback if browser permissions or internet availability block pairing.
+2. Implemented transport: a TV-hosted companion on a narrowly scoped LAN endpoint with per-phone tokens and sequence checks. The original HTTPS encrypted design in this document is historical.
 3. Only enable phone credential entry after a threat-model review and security tests pass.
 4. Reuse the approved pairing session for a remote-control protocol; keep pairing and remote authorization distinct from Immich authentication.
 
@@ -34,7 +38,7 @@ The QR code is a bootstrap for a local control session. It must never contain an
 - Onboarding is implemented in `lib/src/features/onboarding/onboarding_flow.dart`, with UI in `lib/src/features/onboarding/widgets/onboarding_form.dart` and state in `lib/src/features/onboarding/cubit/`.
 - Current setup order is input-method selection → server URL validation → auth-method selection → email/password or API-key sign-in → optional PIN → profile save.
 - Authentication uses the `AuthRepository` interface. `ImmichAuthRepository` performs the server login and `/users/me` verification. Profile metadata is stored separately from secrets; production integration must continue using secure storage for saved credentials.
-- Network access today is outbound Dio traffic. `ImmichDioFactory` creates clients; there is no embedded LAN HTTP server, QR pairing service, WebSocket controller, or phone remote.
+- Network access for the library is outbound Dio traffic through `ImmichDioFactory`. Phone setup/remote adds an ephemeral LAN HTTP server in `IoPhonePairingService`; it serves the bundled companion files and a narrow set of JSON endpoints.
 - Android release manifest already declares `INTERNET`. Its `usesCleartextTraffic` setting exists for users whose Immich servers use local HTTP; that setting does not itself provide TLS or authenticate a new inbound control server.
 - The existing native and screen-keyboard paths should remain usable. Phone pairing is an optional route through onboarding, never a prerequisite for setup.
 
@@ -56,12 +60,12 @@ The QR code is a bootstrap for a local control session. It must never contain an
 1. Keep the current **Screen keyboard** and **Device keyboard** choices. Add a third optional **Use phone** action on the URL or credential steps, with a visible **Continue on TV** fallback.
 2. When the user selects phone setup, start a pairing session only while onboarding is visible. Show a QR code, a short manual URL/code fallback, an expiry timer, and clear same-network instructions.
 3. The phone opens a responsive, touch-friendly page. It shows the Immich TV product name and a short pairing confirmation value that must match the TV. Do not ask the phone to install an app or create an Immich TV account.
-4. The TV asks the user to approve the pairing request. The approval screen identifies the action (for example, “Enter setup details from this phone”), and has explicit Accept and Cancel controls.
-5. The phone collects the server URL and selected sign-in fields. It sends them over the approved pairing channel; the TV applies values to the existing onboarding state and remains the source of truth for validation, sign-in, errors, and secure profile saving.
+4. The TV shows the action being enabled but does not require approval: scanning the QR connects the phone directly.
+5. The phone collects the server URL and selected sign-in fields. It sends them to the TV-hosted endpoint; the TV applies values to the existing onboarding state and remains the source of truth for validation, sign-in, errors, and secure profile saving.
 6. The phone never receives the authenticated Immich session or profile secrets back from the TV. Clear input fields from the companion as soon as the TV acknowledges delivery, and do not write credentials to browser storage, URL parameters, analytics, or logs.
-7. Expire or revoke the pairing session on cancel, timeout, successful completion, app background/termination, or explicit disconnect.
+7. Revoke the session on app background/termination or explicit disconnect.
 
-Do not automatically approve a scan. QR pairing is a cross-device authorization action; the user should be able to confirm the requested action on the TV and cancel it. The IETF's cross-device security guidance describes QR/code substitution and social-engineering attacks, so the app must show what is being paired and avoid implying that scanning alone is safe approval.
+This direct-connect model is a deliberate product trade-off, not a claim of secure cross-device authorization. It is intended for a trusted home network; the TV keeps the fallback keyboard path, and phones can be revoked from Settings.
 
 ### Future phone remote
 

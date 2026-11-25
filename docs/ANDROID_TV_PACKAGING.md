@@ -12,6 +12,10 @@ This document records the TV packaging setup and the checks to run before a stor
 - `android:banner` points to `@drawable/tv_banner`, and `android:resizeableActivity="true"` avoids forced portrait/letterboxing on large screens.
 - `android:usesCleartextTraffic="true"` is intentional: many self-hosted Immich instances are reached over plain HTTP on a local network. Users who want strict HTTPS can still configure their server accordingly.
 
+## Phone pairing / remote validation
+
+When phone-assisted setup or the phone remote is opened, the TV binds an ephemeral local HTTP listener and serves the bundled companion page from its own LAN address. On Android targets with local-network restrictions (API 37+), verify the runtime permission path and the in-app fallback message when it is denied. Add these steps to the device checklist above: QR scan and direct connection on a real TV, onboarding details sent from the phone, remote navigation/text/playback, connecting a second phone, session revoke from Settings, and app-background teardown.
+
 ## Banner assets
 
 TV home screens require a 320 x 180 dp banner. The following densities are bundled and must stay at these exact sizes:

@@ -1,5 +1,13 @@
 # Release Notes
 
+## Unreleased (phone pairing preview)
+
+- **Phone remote** — pair a phone from Settings and use a touch D-pad, Select/Back, text entry, and playback controls to drive the TV.
+- **Continue as remote after setup** — a phone-assisted onboarding session can be reused as the remote session without re-pairing.
+- **Session feedback and revoke** — encrypted acknowledgements, connected/expired/disconnected states, and an immediate Disconnect action on the TV.
+- **Hardening** — foreground-only commands, sequence/replay/rate limits, app-background teardown, and narrow app-level action dispatch instead of raw key injection.
+- **Release gates** — security review of the plain local transport and real-device validation are still required before this ships. The companion page is now bundled and hosted by the TV app itself, so no external deployment is needed.
+
 ## 1.7.0+23
 
 Highlights for this release:

@@ -1,25 +1,22 @@
 # Immich TV phone companion
 
-This directory contains the static HTTPS page used by the TV's QR pairing flow. It has no build step, third-party scripts, analytics, storage, or service worker. Its Web Crypto implementation is covered by deterministic vectors shared with the Dart implementation.
+This directory contains the page served by the TV during QR phone setup and phone remote control. It has no build step, third-party scripts, analytics, storage, or service worker.
 
-## Deployment
+## How it works
 
-The repository workflow `.github/workflows/deploy-phone-companion.yml` can be run manually from GitHub Actions. It publishes only this directory to the repository's GitHub Pages site. Configure GitHub Pages to use GitHub Actions before running it. Deployment is deliberately manual so a source change cannot silently update the security-critical page.
+The TV app bundles the six files listed in `pubspec.yaml` and serves them from its own LAN address. The QR contains a link like `http://192.168.0.172:36043/#<invitation>`: scanning it loads the page straight from the TV, and the page talks to the same origin, so there is no external site, deployment, or CORS configuration.
 
-The app's default URL is `https://workwithafridi.github.io/immich_tv_app/phone_companion/`. If hosting this fork elsewhere, build the TV app with:
+Scanning **connects immediately**. There is no approval screen or verification code on the TV. Each phone receives its own session token and command sequence, so several phones can control the TV at the same time. A phone can disconnect from the remote page, and the TV can revoke phones from Settings.
 
-```text
---dart-define=PHONE_COMPANION_URL=https://your-controlled-host.example/path/
-```
+`plain.js` is the transport used by `app.js`. It sends versioned onboarding input and remote commands over plain HTTP on the local network. `crypto.js` is retained for the legacy externally hosted HTTPS companion mode; the current `app.js` does not use it.
 
-The configured URL must be HTTPS, contain no query or fragment, and serve these files without injecting third-party code. The configured URL's origin is also the exact CORS origin allowed by the TV listener. Keep the URL in sync with the deployed site.
-
-## Browser and network behavior
-
-The phone must load this page in a browser that supports Web Crypto X25519, then explicitly tap **Connect to TV**. The page contacts the TV directly over the same local network; it does not use Bluetooth or a cloud relay. Browser local-network permission prompts, guest Wi-Fi isolation, VPNs, and router client isolation may prevent this connection. The TV keyboard remains available as the fallback. Safari versions without Web Crypto X25519 support cannot use phone entry.
-
-The QR invitation is in the URL fragment and is removed from browser history as soon as the page reads it. Credentials are sent only after the user compares the verification code and approves on the TV. The companion encrypts credentials before local-network transmission and clears its form fields after sending or on failure. The TV then validates the server and leaves sign-in under the user's control.
+Security note: the plain local transport does not encrypt credentials or commands in transit. Use it only on a network you trust. The TV still validates the Immich server and performs sign-in and profile saving; the phone never receives an Immich session.
 
 ## Local checks
 
-Run the companion crypto tests with `npm test --prefix phone_companion`. Run TV pairing tests with `flutter test test/src/features/remote_pairing`. Real Android Chrome and iOS Safari pairing, including permission prompts and credential round trips, still needs device validation before release.
+```text
+npm test --prefix phone_companion
+flutter test test/src/features/remote_pairing
+```
+
+Real Android TV + Android Chrome/iOS Safari validation remains a release gate.

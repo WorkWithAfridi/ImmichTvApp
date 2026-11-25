@@ -60,6 +60,15 @@ Browse a personal library from the couch with a remote-friendly interface. These
 - Secrets in platform secure storage; metadata in SharedPreferences
 - Password or personal API-key sign-in
 
+### Phone-assisted setup and remote (preview)
+
+- Scan a QR to load the companion page directly from the TV; no external site or deployment is needed
+- Enter server details and credentials on the phone; sign-in and profile saving stay on the TV
+- Scanning connects immediately, and more than one phone can control the TV at once
+- Use the same connection as a **phone remote**: touch D-pad, Select/Back, text entry, and playback controls
+- The session is foreground-only and can be revoked from Settings; TV keyboard entry remains the fallback when the local network is unavailable
+- The local transport sends details without encryption, so use it only on a trusted network
+
 ### Built for reliability
 
 - **Server capability handshake** at sign-in (`/server/version`, `/server/media-types`, `/config`) so features only appear when the server supports them

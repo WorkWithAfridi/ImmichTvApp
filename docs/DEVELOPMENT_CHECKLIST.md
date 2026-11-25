@@ -82,6 +82,20 @@ This checklist is phase-based so we can move in deliberate slices while keeping 
 - [x] Add release versioning, screenshots, and distribution notes (see `docs/RELEASING.md`).
 - [x] Prepare a short QA checklist per platform before public testing (see `docs/RELEASE_CHECKLIST.md`).
 
+## Phone-assisted setup and remote (in progress)
+
+- [x] TV-hosted companion page reached directly by scanning the QR; no external hosting
+- [x] Direct connection on scan, with no TV-side approval or verification code
+- [x] Multiple phones can connect and control the TV with independent sequence counters
+- [x] Phone-assisted onboarding for password and API-key sign-in
+- [x] Remote commands with per-client sequence checks, acknowledgement, rate and size limits
+- [x] TV command controller with app-level focus, text and playback actions
+- [x] Settings entry point, connected status, re-pair QR reuse, and on-TV revoke
+- [x] Companion phone remote page and setup-to-remote continuation
+- [ ] Run real Android TV + Android Chrome/iOS Safari network and remote device matrix
+- [ ] Complete independent security review of the plain local transport and Android local-network permission validation
+- [ ] Update packaging/release docs and screenshots once the feature ships
+
 ## Immediate Next Slice
 
 - [ ] Measure image memory behavior and scroll smoothness on real TV-class hardware.

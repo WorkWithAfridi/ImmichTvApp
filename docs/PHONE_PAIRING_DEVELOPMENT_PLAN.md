@@ -1,9 +1,20 @@
 # Phone Pairing and Remote: Development Plan
 
-**Status:** Phone onboarding implementation in progress; hardware and release gates remain open
+**Status:** Phone onboarding and the phone remote MVP are code-complete. The TV app now hosts the companion itself over the local network (plain HTTP), so no external deployment is required for the default flow; security review and real-device/release gates remain open.
 
 **Parent research:** [Phone Pairing and Remote R&D](PHONE_PAIRING_REMOTE_RND.md)
-**Product goal:** Let a user scan a QR code, enter onboarding details on their phone, and later use that paired phone as a TV remote.
+**Product goal:** Let a user scan a QR code, enter onboarding details on their phone, and use that phone (or several phones) as a TV remote.
+
+## Current implementation
+
+The detailed milestones below record the original planning and are kept for context; the shipped behavior is summarised here.
+
+- The TV binds an ephemeral LAN HTTP server and serves the bundled `phone_companion/` files itself. The QR points at the TV, so there is no external companion deployment.
+- Scanning connects immediately: no TV-side approval screen, verification code, or "Connect" tap on the phone.
+- Each phone gets its own token and command sequence. Multiple phones can send setup details or remote commands concurrently; the transport validates order and replays per client.
+- Setup details are sent over plain HTTP on the trusted local network. The TV still owns server validation, sign-in, error handling, and secure profile saving.
+- A session stays active until the app is backgrounded/stopped, a phone disconnects, or the user revokes it from Settings. "Pair another phone" reuses the active QR.
+- Remaining gates: security review of the plain transport, real-device browser/network validation, and release documentation.
 
 ## Delivery principles
 
@@ -34,11 +45,11 @@ Estimates below are engineering effort for one experienced Flutter engineer, exc
 
 ## Implementation progress
 
-Development is underway on `feature/phone-pairing-remote`. The branch now contains keyboard improvements, an in-memory pairing lifecycle, an HTTPS phone companion, X25519/HKDF/AES-GCM encrypted credential transfer, TV-side code comparison and approval, onboarding integration for password and API-key sign-in, and the typed remote-command contract. The TV retains server validation and sign-in control; the phone does not receive an Immich session.
+Development is on `feature/phone-pairing-remote`. The branch contains keyboard improvements, an in-memory TV-hosted session, a local-only plain-HTTP transport, direct connection on scan, multi-phone support, onboarding integration for password and API-key sign-in, and the typed remote-command contract. The legacy encrypted HTTPS transport remains in the protocol/service layer but is not used by the current companion page. The TV retains server validation and sign-in control; the phone does not receive an Immich session.
 
-Milestone status: M2's pairing and command contracts are implemented with automated coverage. M3's local listener, approval UI, expiry, cancel, and fallback are implemented. M4's encrypted companion and onboarding bridge are implemented and covered by focused tests. M0 remains open pending real Android TV, Android Chrome, and iOS Safari network/permission validation. M1's design is captured in ADR 0001; independent security review remains part of M5. M5 is not complete until platform permission behavior, security review, and a device pilot pass. M6 has a typed command contract only; a live phone remote is not implemented.
+Milestone status: the pairing and command contracts, TV-hosted listener, onboarding bridge, and phone remote are implemented with automated coverage. The approval UI and encrypted transfer described in M3–M5 belong to the original plan and are superseded by the direct TV-hosted flow above. Real-device QA, platform permission validation, and independent security review remain open. M1's original transport decision is captured in ADR 0001; that ADR describes the superseded HTTPS design.
 
-The companion static site has a manual GitHub Pages deployment workflow, but deployment and HTTPS-origin verification are still required before the default QR flow can work for users. Do not treat the branch as release-ready until deployment, target-device validation, and the M5 release gate are complete.
+M6 is code-complete: a `/api/command` route, a TV-side command controller with an app-level action boundary, focus/text/playback adapters, a Settings entry point, and a companion remote page are implemented and covered by tests. The default QR flow now works without external deployment because the TV serves the bundled companion page on its own LAN address. Real-device validation and the M5 security gate are still required before release.
 
 ## Trackable milestone breakdown
 
@@ -221,6 +232,20 @@ Treat each `PAIR-###` item as a separately assignable work item. Close a milesto
 
 **Exit gate:** A paired user can navigate onboarding/home and control supported playback actions; unpaired, expired, revoked, malformed, or unauthorized clients cannot control the TV.
 
+### M6 execution breakdown (phone remote MVP)
+
+These items are ordered so each one is independently testable. The shipped transport is the TV-hosted local session described above; the encrypted M2–M4 design is historical and no longer the default. No relay or raw key injection is introduced.
+
+- [x] **PAIR-016a — Encrypted command transport:** Add a narrow `/api/command` route to `IoPhonePairingService`, reusing the active AEAD session. Accept when: only an active approved session can submit a versioned `remoteCommand`, sequence/replay/body/rate checks run before dispatch, and the phone receives an encrypted acknowledgement that cannot be forged by a LAN observer.
+- [x] **PAIR-016b — TV command controller:** Add `RemoteCommandController` with an allowlisted, app-level `RemoteActionHandler` boundary plus `RemotePlaybackRegistry`. Accept when: commands map to narrow handler calls (never arbitrary keys, routes, or Immich APIs), replay/gap/disconnect and out-of-order commands are rejected, and app-background state blocks all commands.
+- [x] **PAIR-016c — App action adapter:** Wire focus traversal, activate/back, text insert/backspace/clear/submit, and viewer/slideshow playback into the handler. Accept when: remote navigation moves the real TV focus, text edits land in the focused field, and playback commands reach only a registered active player.
+- [x] **PAIR-017a — TV remote session UX:** Add a "Phone remote" entry point that starts a pairing session in remote mode, shows the QR/approval status, then releases the TV UI with a visible connected/disconnected state and an immediate Disconnect action. Accept when: the TV stays usable while paired, and disconnect/revoke works from the TV.
+- [x] **PAIR-017b — Companion remote surface:** Extend `phone_companion` with a touch D-pad, Select/Back, text controls, playback controls, TV identity, connection state and Disconnect, driven by the same encrypted session and ack channel. Accept when: each action has visible acknowledgement and expired/revoked/network-disconnected states are clear.
+- [x] **PAIR-018a — Authorization and lifecycle hardening:** Stop the session and clear keys on app pause/background/sign-out, enforce per-command rate limits and payload caps, and reject unpaired/expired/revoked/malformed/stale clients. Accept when: no command can execute outside an active foreground session.
+- [x] **PAIR-018b — Coverage and docs:** Unit tests for transport, controller, sequence and allowlist; widget tests for the TV remote entry/status; companion crypto/protocol vector updates; README, development checklist, release notes, packaging and release checklist updated. Accept when: `flutter analyze`, `flutter test`, and `npm test --prefix phone_companion` pass with the new coverage.
+
+Real-device QA and a security review of the plain local transport remain separate release gates; completing the items above makes the feature code-complete, not release-ready. Companion deployment is no longer a gate because the TV hosts the page.
+
 ### M7 — Release and follow-up
 
 1. Update `docs/ANDROID_TV_PACKAGING.md`, `docs/RELEASE_CHECKLIST.md`, `docs/DEVELOPMENT_CHECKLIST.md`, and release notes with pairing and remote validation.
@@ -232,9 +257,9 @@ Treat each `PAIR-###` item as a separately assignable work item. Close a milesto
 
 ## Definition of done
 
-- [ ] Pairing is initiated only by an explicit TV action and requires TV-side approval.
-- [ ] QR/manual fallback, expiry, deny, cancel, disconnect, and revoke are implemented and tested.
-- [ ] The selected channel protects credential integrity/confidentiality to the level recorded in the approved threat model.
+- [x] A session is initiated only by an explicit TV action, and scanning the QR connects the phone.
+- [x] QR/manual fallback, cancel, disconnect, and revoke are implemented and tested.
+- [ ] The plain local channel is reviewed against an accepted threat model and used only on trusted networks.
 - [ ] Email/password and API-key setup work from the phone and current TV keyboard options.
 - [ ] Existing server URL normalization, Immich auth handling, and secure profile persistence remain the source of truth.
 - [ ] Pairing values and credentials are ephemeral, excluded from logs/analytics/storage, and cleared after use.

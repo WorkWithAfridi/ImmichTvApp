@@ -39,6 +39,14 @@ Capture at 1280 x 720 (TV viewport) and at a phone viewport where relevant:
 - [ ] Sign out and switch user work from the sidebar.
 - [ ] Cold start on a flaky network shows the offline banner instead of a blank screen.
 
+## Phone pairing and remote (when enabled)
+
+- [ ] The TV-hosted companion loads from the TV's own LAN address without third-party scripts; if an external HTTPS URL is configured instead, that origin is deployed and verified.
+- [ ] QR pairing, approval code comparison, and deny/cancel work on the supported phone browsers.
+- [ ] Remote D-pad, Select/Back, text entry, playback controls, ack feedback, and Disconnect work on real TV hardware.
+- [ ] Backgrounding the TV app revokes the session; reconnect shows a clear disconnected state.
+- [ ] Unpaired, expired, and revoked phones cannot issue commands.
+
 ## Other platforms
 
 - [ ] Web: app loads directly at `/`, sign-in and playback work.
