@@ -135,6 +135,25 @@ void main() {
     expect(receivedInput.apiKey, input.apiKey);
     expect(receivedInput.serverUrl, input.serverUrl);
     expect(receivedInput.toString(), isNot(contains(input.apiKey)));
+
+    final tampered = await phone.encryptToTv(
+      type: 'onboardingInput',
+      plaintext: utf8.encode(jsonEncode(input.toJson())),
+    );
+    final tamperedJson = tampered.toJson();
+    final tag = tamperedJson['tag']! as String;
+    tamperedJson['tag'] =
+        '${tag.substring(0, tag.length - 1)}${tag.endsWith('A') ? 'B' : 'A'}';
+    final rejected = await _post(
+      client,
+      Uri.parse(invitation['endpoint']! as String),
+      '/api/input',
+      tamperedJson,
+      origin: companionUri.origin,
+    );
+    expect(rejected.statusCode, HttpStatus.badRequest);
+    await rejected.drain<void>();
+    expect(service.snapshot?.phase, PairingPhase.revoked);
   });
 
   test('rejects cross-origin requests before pairing state changes', () async {
@@ -149,8 +168,7 @@ void main() {
             )
             as Map<String, Object?>;
     final otherPhoneKeyPair = await X25519().newKeyPair();
-    final otherPhonePublicKey =
-        await otherPhoneKeyPair.extractPublicKey() as SimplePublicKey;
+    final otherPhonePublicKey = await otherPhoneKeyPair.extractPublicKey();
     final response = await _post(
       client,
       Uri.parse(invitation['endpoint']! as String),

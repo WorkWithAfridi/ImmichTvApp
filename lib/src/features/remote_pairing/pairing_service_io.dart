@@ -338,11 +338,20 @@ class IoPhonePairingService implements PhonePairingService {
     final PairingCryptoSession? cryptoSession = _cryptoSession;
     final sessionId = body['sessionId'];
     final sequence = body['seq'];
-    if (cryptoSession == null ||
-        sessionId is! String ||
-        sessionId != cryptoSession.sessionId ||
-        sequence is! int ||
-        body['type'] != 'onboardingInput') {
+    if (cryptoSession == null) {
+      await _respond(response, HttpStatus.badRequest, {
+        'error': 'invalid_message',
+      });
+      return;
+    }
+    if (sessionId is! String || sessionId != cryptoSession.sessionId) {
+      await _respond(response, HttpStatus.badRequest, {
+        'error': 'invalid_message',
+      });
+      return;
+    }
+    if (sequence is! int || body['type'] != 'onboardingInput') {
+      _revokeCryptoSession();
       await _respond(response, HttpStatus.badRequest, {
         'error': 'invalid_message',
       });
@@ -376,17 +385,25 @@ class IoPhonePairingService implements PhonePairingService {
       }
       await _respond(response, HttpStatus.ok, {'accepted': true});
     } on PairingCryptoException catch (error) {
+      _revokeCryptoSession();
       await _respond(response, HttpStatus.badRequest, {'error': error.code});
     } on PairingProtocolException catch (error) {
+      if (error.failure == PairingFailure.invalidMessage ||
+          error.failure == PairingFailure.invalidSequence ||
+          error.failure == PairingFailure.replayedMessage) {
+        _revokeCryptoSession();
+      }
       final status = error.failure == PairingFailure.rateLimited
           ? HttpStatus.tooManyRequests
           : HttpStatus.forbidden;
       await _respond(response, status, {'error': error.failure.name});
     } on FormatException {
+      _revokeCryptoSession();
       await _respond(response, HttpStatus.badRequest, {
         'error': 'invalid_message',
       });
     } on Object {
+      _revokeCryptoSession();
       await _respond(response, HttpStatus.badRequest, {
         'error': 'invalid_message',
       });
@@ -480,6 +497,20 @@ class IoPhonePairingService implements PhonePairingService {
     _cryptoHandshake = null;
     _cryptoSession?.destroy();
     _cryptoSession = null;
+  }
+
+  void _revokeCryptoSession() {
+    final sessionId = _cryptoSession?.sessionId;
+    if (sessionId != null) {
+      try {
+        _protocol.revoke(sessionId: sessionId);
+      } on PairingProtocolException {
+        // Expiry or shutdown can race a malformed request; still clear keys.
+      }
+    }
+    _expiryTimer?.cancel();
+    _destroyCrypto();
+    _publish(_protocol.snapshot);
   }
 
   Future<void> _respond(
