@@ -128,7 +128,8 @@ class _ViewerVideoPlayer extends StatefulWidget {
   State<_ViewerVideoPlayer> createState() => _ViewerVideoPlayerState();
 }
 
-class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
+class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer>
+    implements RemotePlaybackTarget {
   static const _scrubDurations = <Duration>[
     Duration(seconds: 5),
     Duration(seconds: 10),
@@ -161,13 +162,31 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
   bool _isSwitchingNativeSource = false;
   String? _hlsPlaylistUrl;
   String? _hlsSessionId;
+  RemotePlaybackRegistry? _remotePlaybackRegistry;
 
   @override
   void initState() {
     super.initState();
+    _remotePlaybackRegistry = maybeRemoteRepository<RemotePlaybackRegistry>(
+      context,
+    );
+    _remotePlaybackRegistry?.register(this);
     _registerScrubberHandle();
     _initializePlayer();
   }
+
+  @override
+  bool get isRemotePlaybackAvailable =>
+      _controller?.value.isInitialized ?? false;
+
+  @override
+  bool get supportsSeek => true;
+
+  @override
+  void togglePlayback() => unawaited(_togglePlayback());
+
+  @override
+  void seekBy(Duration delta) => unawaited(_seekRelative(delta));
 
   @override
   void didUpdateWidget(covariant _ViewerVideoPlayer oldWidget) {
@@ -189,6 +208,7 @@ class _ViewerVideoPlayerState extends State<_ViewerVideoPlayer> {
 
   @override
   void dispose() {
+    _remotePlaybackRegistry?.unregister(this);
     widget.onRegisterScrubberHandle?.call(null);
     widget.onScrubModeChanged?.call(false);
     _focusNode.dispose();

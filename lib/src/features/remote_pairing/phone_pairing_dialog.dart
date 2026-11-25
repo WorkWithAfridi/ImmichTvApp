@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../shared/presentation/app_colors.dart';
+import '../../shared/presentation/app_durations.dart';
+import '../../shared/presentation/app_focus_decoration.dart';
 import '../../shared/presentation/app_radii.dart';
 import '../../shared/presentation/app_spacing.dart';
+import '../../shared/presentation/widgets/tv_focusable.dart';
 import 'pairing_protocol.dart';
 import 'pairing_service.dart';
 
@@ -13,11 +16,15 @@ class PhonePairingDialog extends StatefulWidget {
   const PhonePairingDialog({
     super.key,
     required this.service,
-    required this.onInputReceived,
+    this.mode = PhonePairingMode.setup,
+    this.onInputReceived,
   });
 
   final PhonePairingService service;
-  final Future<void> Function(PhoneOnboardingInput input) onInputReceived;
+  final PhonePairingMode mode;
+
+  /// Only used in setup mode. The TV remains the sign-in authority.
+  final Future<void> Function(PhoneOnboardingInput input)? onInputReceived;
 
   @override
   State<PhonePairingDialog> createState() => _PhonePairingDialogState();
@@ -31,15 +38,25 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
   PairingServiceFailure? _serviceFailure;
   bool _isStarting = true;
   bool _isChangingApproval = false;
+  bool _remoteConnected = false;
 
   @override
   void initState() {
     super.initState();
-    _subscription = widget.service.updates.listen((snapshot) {
-      if (mounted) setState(() => _snapshot = snapshot);
-    });
+    _subscription = widget.service.updates.listen(_onSnapshot);
     _inputSubscription = widget.service.onboardingInputs.listen(_receiveInput);
     unawaited(_start());
+  }
+
+  void _onSnapshot(PairingSnapshot? snapshot) {
+    if (!mounted) return;
+    setState(() => _snapshot = snapshot);
+    if (widget.mode == PhonePairingMode.remote &&
+        snapshot?.phase == PairingPhase.active &&
+        !_remoteConnected) {
+      _remoteConnected = true;
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override
@@ -50,8 +67,10 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
   }
 
   Future<void> _receiveInput(PhoneOnboardingInput input) async {
+    final onInputReceived = widget.onInputReceived;
+    if (onInputReceived == null) return;
     try {
-      await widget.onInputReceived(input);
+      await onInputReceived(input);
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (!mounted) return;
@@ -60,8 +79,15 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
   }
 
   Future<void> _start() async {
+    if (!widget.service.isSupported) {
+      setState(() {
+        _serviceFailure = PairingServiceFailure.unsupportedPlatform;
+        _isStarting = false;
+      });
+      return;
+    }
     try {
-      final connection = await widget.service.start();
+      final connection = await widget.service.start(mode: widget.mode);
       if (!mounted) {
         await widget.service.stop();
         return;
@@ -130,7 +156,9 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Set up with your phone',
+                widget.mode == PhonePairingMode.remote
+                    ? 'Use your phone as a remote'
+                    : 'Set up with your phone',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
@@ -138,7 +166,9 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
-                'Scan this code with your phone camera. Both devices need to be on the same home network. Check the verification code before approving the connection.',
+                widget.mode == PhonePairingMode.remote
+                    ? 'Scan this code with your phone camera. Both devices need to be on the same home network. Scanning connects immediately; more than one phone can control this TV.'
+                    : 'Scan this code with your phone camera. Both devices need to be on the same home network. Scanning connects immediately, with no approval step.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
@@ -168,7 +198,7 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
-                  'Or open this secure pairing link on your phone:',
+                  'Or open this pairing link on your phone:',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -197,16 +227,19 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: _isChangingApproval ? null : _deny,
-                        icon: const Icon(Icons.close_rounded),
-                        label: const Text('Deny'),
+                      _PairingButton(
+                        label: 'Deny',
+                        icon: Icons.close_rounded,
+                        onPressed: _deny,
+                        enabled: !_isChangingApproval,
                       ),
                       const SizedBox(width: AppSpacing.sm),
-                      FilledButton.icon(
-                        onPressed: _isChangingApproval ? null : _approve,
-                        icon: const Icon(Icons.check_rounded),
-                        label: const Text('Approve phone'),
+                      _PairingButton(
+                        label: 'Approve phone',
+                        icon: Icons.check_rounded,
+                        onPressed: _approve,
+                        enabled: !_isChangingApproval,
+                        primary: true,
                       ),
                     ],
                   ),
@@ -214,16 +247,19 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
               ],
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Your setup details are encrypted before they leave your phone. Sign-in and profile saving stay on this TV.',
+                widget.mode == PhonePairingMode.remote
+                    ? 'Commands go directly to this TV over your local network and only work while this app is open. You can revoke phones at any time from Settings.'
+                    : 'Your setup details go directly to this TV over your local network. Sign-in and profile saving stay on this TV.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: AppColors.textMuted,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Close'),
+              _PairingButton(
+                label: 'Close',
+                icon: Icons.close_rounded,
+                onPressed: () => Navigator.of(context).pop(false),
               ),
             ],
           ),
@@ -320,6 +356,71 @@ class _PairingFailureMessage extends StatelessWidget {
           context,
         ).textTheme.bodyLarge?.copyWith(color: AppColors.textSecondary),
       ),
+    );
+  }
+}
+
+class _PairingButton extends StatelessWidget {
+  const _PairingButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.enabled = true,
+    this.primary = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool enabled;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    return TvFocusable(
+      onPressed: enabled ? onPressed : null,
+      enabled: enabled,
+      builder: (_, state) {
+        return AnimatedContainer(
+          duration: AppDurations.normal,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          decoration: AppFocusDecoration.surface(
+            isFocused: state.isFocused,
+            isActive: state.isActive,
+            isSelected: primary,
+            backgroundColor: primary
+                ? AppColors.primary
+                : AppColors.backgroundElevated,
+            activeBackgroundColor: primary
+                ? AppColors.primary
+                : AppColors.surfaceMuted,
+            selectedBackgroundColor: AppColors.primary,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: primary ? AppColors.actionForeground : AppColors.textPrimary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: primary
+                      ? AppColors.actionForeground
+                      : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

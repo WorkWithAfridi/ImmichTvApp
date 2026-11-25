@@ -1,28 +1,54 @@
 import {
-  createApprovalCode,
-  createPhoneCryptoSession,
-  encryptOnboardingInput,
-  fromBase64Url,
-  toBase64Url,
-} from './crypto.js';
+  disconnectFromTv,
+  pollStatus,
+  requestPair,
+  sendOnboardingInput,
+  sendRemoteCommand,
+} from './plain.js';
+import {
+  ackFeedback,
+  buildBackCommand,
+  buildBackspaceCommand,
+  buildClearTextCommand,
+  buildDisconnectCommand,
+  buildNavigateCommand,
+  buildSeekByCommand,
+  buildSelectCommand,
+  buildSubmitTextCommand,
+  buildTextInputCommand,
+  buildTogglePlaybackCommand,
+  parseInvitation,
+} from './commands.js';
 
 (() => {
   'use strict';
 
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder('utf-8', { fatal: true });
   const $ = (id) => document.getElementById(id);
-  const state = { invitation: null, keys: null, sequence: 0, sending: false };
-  const connectButton = $('connectButton');
+  const state = {
+    invitation: null,
+    sessionToken: null,
+    sequence: 0,
+    sending: false,
+    polling: false,
+    mode: 'setup',
+    remoteActive: false,
+    statusTimer: null,
+  };
+  const continueRemoteButton = $('continueRemoteButton');
   const statusTitle = $('statusTitle');
   const statusMessage = $('statusMessage');
   const statusIcon = $('statusIcon');
   const helpMessage = $('helpMessage');
-  const verification = $('verification');
-  const verificationCode = $('verificationCode');
   const setupForm = $('setupForm');
   const formError = $('formError');
   const sendButton = $('sendButton');
+  const remotePanel = $('remotePanel');
+  const remoteSession = $('remoteSession');
+  const remoteConnection = $('remoteConnection');
+  const remoteStatusDot = $('remoteStatusDot');
+  const remoteFeedback = $('remoteFeedback');
+  const remoteText = $('remoteText');
+  const remoteButtons = [...remotePanel.querySelectorAll('button')];
 
   function setStatus(title, message, icon = '↔') {
     statusTitle.textContent = title;
@@ -33,19 +59,19 @@ import {
   function readInvitation() {
     const fragment = location.hash.slice(1);
     history.replaceState(null, '', location.pathname);
-    const invitation = JSON.parse(decoder.decode(fromBase64Url(fragment)));
-    if (invitation.v !== 1 ||
-        typeof invitation.sessionId !== 'string' || invitation.sessionId.length > 128 ||
-        typeof invitation.bootstrapToken !== 'string' || invitation.bootstrapToken.length < 40 ||
-        typeof invitation.endpoint !== 'string' ||
-        typeof invitation.tvPublicKey !== 'string') throw new Error('invalid_invitation');
-    const endpoint = new URL(invitation.endpoint);
+    const invitation = parseInvitation(fragment);
+    let endpoint;
+    try {
+      endpoint = new URL(invitation.endpoint);
+    } catch (_) {
+      throw new Error('invalid_invitation');
+    }
     if (endpoint.protocol !== 'http:' || endpoint.username || endpoint.password ||
         !(isPrivateIpv4(endpoint.hostname) || endpoint.hostname.endsWith('.local'))) {
       throw new Error('invalid_invitation');
     }
     invitation.endpoint = endpoint.origin;
-    fromBase64Url(invitation.tvPublicKey);
+    state.mode = invitation.mode;
     return invitation;
   }
 
@@ -57,66 +83,24 @@ import {
       (parts[0] === 192 && parts[1] === 168);
   }
 
-  function targetFetch(url, options = {}) {
-    const request = new Request(url, {
-      ...options,
-      mode: 'cors',
-      credentials: 'omit',
-      cache: 'no-store',
-      redirect: 'error',
-      referrerPolicy: 'no-referrer',
-      // Chrome uses this hint to permit a secure page to request a private LAN address.
-      targetAddressSpace: 'local',
-    });
-    return fetch(request);
-  }
-
-  async function post(path, body) {
-    const response = await targetFetch(`${state.invitation.endpoint}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(`tv_http_${response.status}`);
-    return response.json();
-  }
-
   async function requestPairing() {
-    if (!globalThis.crypto?.subtle) throw new Error('crypto_unavailable');
-    const keys = await createPhoneCryptoSession(
-      fromBase64Url(state.invitation.tvPublicKey),
-      state.invitation.sessionId,
-    );
-    const code = await createApprovalCode(keys, state.invitation.sessionId);
-    const response = await post('/api/pair', {
-      sessionId: state.invitation.sessionId,
-      bootstrapToken: state.invitation.bootstrapToken,
-      phonePublicKey: toBase64Url(keys.phonePublicBytes),
-    });
-    if (response.phase !== 'approvalPending') throw new Error('pairing_rejected');
-    state.keys = keys;
-    verificationCode.textContent = code;
-    verification.hidden = false;
-    setStatus('Check the code on your TV', 'Make sure the six-digit code below matches the one shown on your TV. Approve only if the codes match.', '✓');
-    connectButton.hidden = true;
-    helpMessage.textContent = 'Waiting for approval on your TV…';
-    await waitForApproval();
+    // Scanning the QR is the connection: no approval step on either device.
+    const response = await requestPair(state.invitation);
+    if (response.phase !== 'active' || !response.sessionToken) {
+      throw new Error('pairing_rejected');
+    }
+    state.sessionToken = response.sessionToken;
+    if (state.mode === 'remote') {
+      enterRemoteMode();
+    } else {
+      setStatus('You’re connected', 'Enter your Immich server and sign-in details below. They are sent directly to your TV on your local network.', '✓');
+      setupForm.hidden = false;
+      helpMessage.textContent = 'Keep this page open until the TV confirms your details were received.';
+    }
   }
 
-  async function waitForApproval() {
-    while (true) {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      const result = await post('/api/status', { sessionId: state.invitation.sessionId });
-      if (result.phase === 'active') {
-        setStatus('You’re connected', 'Enter your Immich server and sign-in details below. Your credentials are encrypted on this phone.', '✓');
-        setupForm.hidden = false;
-        helpMessage.textContent = 'Keep this page open until the TV confirms your details were received.';
-        return;
-      }
-      if (result.phase === 'expired' || result.phase === 'revoked' || result.phase === 'stopped') {
-        throw new Error(result.phase === 'expired' ? 'pairing_expired' : 'pairing_closed');
-      }
-    }
+  function isTerminalPhase(phase) {
+    return phase === 'expired' || phase === 'revoked' || phase === 'stopped';
   }
 
   function setAuthMode() {
@@ -137,35 +121,35 @@ import {
 
   async function submitSetup(event) {
     event.preventDefault();
-    if (state.sending || !state.keys) return;
+    if (state.sending || !state.sessionToken) return;
     formError.hidden = true;
     if (!setupForm.reportValidity()) return;
     state.sending = true;
     sendButton.disabled = true;
-    sendButton.textContent = 'Encrypting and sending…';
+    sendButton.textContent = 'Sending to TV…';
     const method = new FormData(setupForm).get('authMethod');
     const payload = method === 'password'
       ? { v: 1, type: 'onboardingInput', serverUrl: $('serverUrl').value, authMethod: 'password', email: $('email').value, password: $('password').value }
       : { v: 1, type: 'onboardingInput', serverUrl: $('serverUrl').value, authMethod: 'apiKey', apiKey: $('apiKey').value };
     try {
-      const encrypted = await encryptOnboardingInput(
-        state.keys,
-        state.invitation.sessionId,
+      const response = await sendOnboardingInput(
+        state.invitation,
+        state.sessionToken,
         ++state.sequence,
         payload,
       );
-      // Clear JS references and fields immediately after encryption; never persist them.
+      // Clear JS references and fields immediately after sending; never persist them.
       payload.password = '';
       payload.apiKey = '';
       payload.email = '';
       payload.serverUrl = '';
-      const response = await post('/api/input', encrypted);
       clearCredentials();
       setupForm.hidden = true;
-      verification.hidden = true;
-      setStatus('Details sent to your TV', 'Finish server validation and sign-in on the TV screen. This page has cleared the details you entered.', '✓');
-      helpMessage.textContent = response.accepted ? 'You can close this page now.' : 'Continue on the TV to complete setup.';
-      state.keys = null;
+        setStatus('Details sent to your TV', 'Finish server validation and sign-in on the TV screen. This page has cleared the details you entered.', '✓');
+      helpMessage.textContent = response.accepted
+        ? 'You can close this page now, or continue using this phone as a remote.'
+        : 'Continue on the TV to complete setup.';
+      continueRemoteButton.hidden = false;
     } catch (error) {
       clearCredentials();
       formError.hidden = false;
@@ -174,44 +158,195 @@ import {
         : 'We could not send these details. For your safety, the fields were cleared. Start a new phone pairing and try again, or continue on the TV.';
       sendButton.disabled = false;
       sendButton.textContent = 'Send setup details to TV';
-      state.keys = null;
+      state.sessionToken = null;
     } finally {
       state.sending = false;
     }
   }
 
-  function showConnectionError(error) {
-    const messages = {
-      invalid_invitation: 'This pairing link is invalid. Scan a new code from your TV.',
-      crypto_unavailable: 'This browser does not support the secure pairing required. Update your browser or continue setup on the TV.',
-      pairing_expired: 'This pairing request expired. Start a new request on the TV.',
-      pairing_closed: 'This pairing request was closed on the TV.',
-      pairing_rejected: 'The TV could not accept this pairing request. Start a new one from the TV.',
-    };
-    setStatus('Could not connect', messages[error.message] || 'Check that both devices are on the same network and allow this page to connect to local devices. Then scan a new code.', '!');
-    connectButton.hidden = true;
-    helpMessage.textContent = 'Guest Wi-Fi, router isolation, or browser local-network settings can block the connection. Your TV keyboard is always available.';
-    state.keys = null;
+  function setRemoteConnection(label, tone = 'idle') {
+    remoteConnection.textContent = label;
+    remoteStatusDot.classList.toggle('is-connected', tone === 'connected');
+    remoteStatusDot.classList.toggle('is-error', tone === 'error');
   }
 
-  function initialize() {
+  function setRemoteFeedback(text, isError = false) {
+    remoteFeedback.textContent = text;
+    remoteFeedback.classList.toggle('is-error', isError);
+  }
+
+  function setRemoteControlsEnabled(enabled) {
+    for (const button of remoteButtons) button.disabled = !enabled;
+    remoteText.disabled = !enabled;
+  }
+
+  function enterRemoteMode() {
+    state.remoteActive = true;
+    remotePanel.hidden = false;
+    remoteSession.textContent = `Session ${state.invitation.sessionId.slice(0, 6)}`;
+    setStatus('You’re connected', 'Use the controls below to navigate and play media on your TV. Keep this page open while you are connected.', '✓');
+    helpMessage.textContent = 'Commands are sent directly to your TV on your local network.';
+    setRemoteConnection('Connected', 'connected');
+    setRemoteFeedback('Ready');
+    setRemoteControlsEnabled(true);
+    startStatusPolling();
+  }
+
+  function stopStatusPolling() {
+    if (state.statusTimer !== null) {
+      clearInterval(state.statusTimer);
+      state.statusTimer = null;
+    }
+  }
+
+  function startStatusPolling() {
+    stopStatusPolling();
+    state.statusTimer = setInterval(pollRemoteStatus, 1500);
+  }
+
+  async function pollRemoteStatus() {
+    if (state.polling || !state.remoteActive) return;
+    state.polling = true;
+    try {
+      const result = await pollStatus(state.invitation, state.sessionToken);
+      if (!state.remoteActive) return;
+      if (isTerminalPhase(result.phase)) {
+        enterDisconnected(
+          result.phase === 'expired' ? 'expired' : result.phase === 'revoked' ? 'revoked' : 'disconnected',
+        );
+        return;
+      }
+      if (result.phase === 'active') setRemoteConnection('Connected', 'connected');
+      else setRemoteConnection('Disconnected', 'error');
+    } catch (_) {
+      // A transient network failure must not look like a successful connection.
+      if (state.remoteActive) setRemoteConnection('Network error', 'error');
+    } finally {
+      state.polling = false;
+    }
+  }
+
+  function enterDisconnected(reason) {
+    stopStatusPolling();
+    state.remoteActive = false;
+    state.sessionToken = null;
+    remotePanel.hidden = true;
+    remoteText.value = '';
+    setRemoteControlsEnabled(false);
+    const details = {
+      expired: ['Connection expired', 'This pairing request expired. Scan a new QR code from your TV to control it again.'],
+      revoked: ['Connection revoked', 'Your TV ended this pairing. Scan a new QR code from your TV to control it again.'],
+      disconnected: ['Disconnected', 'You are no longer controlling your TV. Scan a new QR code from your TV to connect again.'],
+      networkError: ['Network error', 'Check that both devices are on the same network, then scan a new QR code from your TV.'],
+    };
+    const [title, message] = details[reason] || details.disconnected;
+    setStatus(title, message, '!');
+    helpMessage.textContent = 'Your TV keyboard remains available as a fallback.';
+  }
+
+  async function sendCommand(build) {
+    if (state.sending || !state.remoteActive || !state.sessionToken) return null;
+    state.sending = true;
+    setRemoteControlsEnabled(false);
+    setRemoteFeedback('Sending…');
+    try {
+      // Consume a sequence even if the network fails; a retry must never
+      // reuse a number the TV might already have seen.
+      const sequence = ++state.sequence;
+      const payload = build(sequence);
+      const ack = await sendRemoteCommand(
+        state.invitation,
+        state.sessionToken,
+        payload,
+      );
+      const label = ackFeedback(ack);
+      setRemoteFeedback(label, label === 'Failed' || label === 'Not available on TV');
+      return ack;
+    } catch (error) {
+      if (error instanceof TypeError || /^tv_http_5/.test(error.message)) {
+        setRemoteConnection('Network error', 'error');
+      }
+      if (error.message === 'tv_http_401' || error.message === 'tv_http_403') {
+        enterDisconnected('revoked');
+      } else if (state.remoteActive) {
+        // Never surface raw error text; it could contain sensitive details.
+        setRemoteFeedback('Failed', true);
+      }
+      return null;
+    } finally {
+      state.sending = false;
+      if (state.remoteActive) setRemoteControlsEnabled(true);
+    }
+  }
+
+  async function handleCommand(name) {
+    if (!state.remoteActive) return;
+    let build;
+    switch (name) {
+      case 'up': build = (seq) => buildNavigateCommand(seq, 'up'); break;
+      case 'down': build = (seq) => buildNavigateCommand(seq, 'down'); break;
+      case 'left': build = (seq) => buildNavigateCommand(seq, 'left'); break;
+      case 'right': build = (seq) => buildNavigateCommand(seq, 'right'); break;
+      case 'select': build = buildSelectCommand; break;
+      case 'back': build = buildBackCommand; break;
+      case 'sendText': {
+        // Read at tap time so quick edits are never silently dropped.
+        const text = remoteText.value;
+        build = (seq) => buildTextInputCommand(seq, text);
+        break;
+      }
+      case 'backspace': build = buildBackspaceCommand; break;
+      case 'clearText': build = buildClearTextCommand; break;
+      case 'submitText': build = buildSubmitTextCommand; break;
+      case 'togglePlayback': build = buildTogglePlaybackCommand; break;
+      case 'seekBack': build = (seq) => buildSeekByCommand(seq, -10); break;
+      case 'seekForward': build = (seq) => buildSeekByCommand(seq, 10); break;
+      case 'disconnect': build = buildDisconnectCommand; break;
+      default: return;
+    }
+    const ack = await sendCommand(build);
+    if (ack && name === 'disconnect') {
+      try {
+        await disconnectFromTv(state.invitation, state.sessionToken);
+      } catch (_) {
+        // The TV already removed this client when it handled the command.
+      }
+      enterDisconnected('disconnected');
+    }
+  }
+
+  function showConnectionError(error) {
+    const messages = {
+      invalid_invitation: 'This link is invalid. Scan a new QR code from your TV.',
+      pairing_expired: 'This TV session expired. Scan a new QR code.',
+      pairing_closed: 'The TV closed this session. Scan a new QR code.',
+      pairing_rejected: 'The TV could not accept this connection. Scan a new QR code.',
+    };
+    setStatus('Could not connect', messages[error.message] || 'Check that both devices are on the same network and allow this page to connect to local devices. Then scan a new code.', '!');
+    helpMessage.textContent = 'Guest Wi-Fi, router isolation, or browser local-network settings can block the connection. Your TV keyboard is always available.';
+    state.sessionToken = null;
+  }
+
+  async function initialize() {
     document.querySelectorAll('input[name="authMethod"]').forEach((input) => input.addEventListener('change', setAuthMode));
     setupForm.addEventListener('submit', submitSetup);
-    connectButton.addEventListener('click', async () => {
-      connectButton.disabled = true;
-      connectButton.textContent = 'Connecting…';
-      try {
-        await requestPairing();
-      } catch (error) {
-        showConnectionError(error);
-      }
+    continueRemoteButton.addEventListener('click', () => {
+      if (!state.sessionToken || state.remoteActive) return;
+      continueRemoteButton.hidden = true;
+      enterRemoteMode();
+    });
+    remoteButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        void handleCommand(button.dataset.command);
+      });
     });
     try {
       state.invitation = readInvitation();
-      if (!globalThis.crypto?.subtle) throw new Error('crypto_unavailable');
+      // Scanning the link is the handshake; connect without any button or
+      // approval step on either device.
+      await requestPairing();
     } catch (error) {
-      connectButton.hidden = true;
-      showConnectionError(error);
+        showConnectionError(error);
     }
     setAuthMode();
     window.addEventListener('pagehide', clearCredentials, { once: true });

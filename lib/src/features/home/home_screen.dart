@@ -38,6 +38,10 @@ import '../library/cubit/library_cubit.dart';
 import '../library/cubit/library_state.dart';
 import '../settings/cubit/settings_cubit.dart';
 import '../settings/cubit/settings_state.dart';
+import '../remote_pairing/pairing_protocol.dart';
+import '../remote_pairing/pairing_service.dart';
+import '../remote_pairing/phone_pairing_dialog.dart';
+import '../remote_pairing/tv_remote_actions.dart';
 import '../slideshow/slideshow_page_loader.dart';
 import '../viewer/asset_viewer_screen.dart';
 

@@ -23,6 +23,7 @@ import '../../shared/presentation/app_spacing.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
 import '../../shared/presentation/widgets/rebuild_tracker.dart';
 import '../../shared/presentation/widgets/tv_focusable.dart';
+import '../remote_pairing/tv_remote_actions.dart';
 import '../slideshow/slideshow_page_loader.dart';
 import '../slideshow/slideshow_player_screen.dart';
 import 'cubit/asset_viewer_cubit.dart';

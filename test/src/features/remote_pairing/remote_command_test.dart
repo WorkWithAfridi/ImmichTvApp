@@ -36,7 +36,10 @@ void main() {
             'command': 'togglePlayback',
           },
           {'v': 1, 'type': 'remoteCommand', 'seq': 6, 'command': 'back'},
-          {'v': 1, 'type': 'remoteCommand', 'seq': 7, 'command': 'disconnect'},
+          {'v': 1, 'type': 'remoteCommand', 'seq': 7, 'command': 'backspace'},
+          {'v': 1, 'type': 'remoteCommand', 'seq': 8, 'command': 'clearText'},
+          {'v': 1, 'type': 'remoteCommand', 'seq': 9, 'command': 'submitText'},
+          {'v': 1, 'type': 'remoteCommand', 'seq': 10, 'command': 'disconnect'},
         ];
 
         for (final payload in commands) {
@@ -177,6 +180,45 @@ void main() {
         ),
       );
       expect(sequence.accept(first), same(first));
+    });
+
+    test('can be seeded from an already active session', () {
+      final sequence = RemoteCommandSequence(initial: 4);
+      final command = RemoteCommand.fromJson({
+        'v': 1,
+        'type': 'remoteCommand',
+        'seq': 5,
+        'command': 'select',
+      });
+      expect(sequence.accept(command), same(command));
+      expect(
+        () => sequence.accept(command),
+        throwsA(
+          isA<RemoteCommandException>().having(
+            (error) => error.failure,
+            'failure',
+            RemoteCommandFailure.replayedMessage,
+          ),
+        ),
+      );
+    });
+  });
+
+  group('RemoteCommandAck', () {
+    test('uses a strict allowlisted envelope', () {
+      final ack = RemoteCommandAck(
+        sequence: 2,
+        accepted: false,
+        outcome: RemoteCommandOutcome.unavailable,
+      );
+      expect(ack.toJson(), {
+        'v': 1,
+        'type': 'ack',
+        'seq': 2,
+        'accepted': false,
+        'outcome': 'unavailable',
+      });
+      expect(ack.toString(), isNot(contains('secret')));
     });
   });
 }

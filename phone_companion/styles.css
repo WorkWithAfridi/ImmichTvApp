@@ -53,5 +53,33 @@ footer p { margin: 0 0 6px; }
 footer a { color: var(--accent); }
 [hidden] { display: none !important; }
 
+/* Touch remote (only rendered for QR invitations in remote mode). */
+.remote-card { padding: 20px; }
+.remote-identity { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
+.status-dot { flex: 0 0 12px; width: 12px; height: 12px; border-radius: 50%; background: #8d899e; }
+.status-dot.is-connected { background: #9de0bc; box-shadow: 0 0 0 4px #9de0bc22; }
+.status-dot.is-error { background: #ffb3a4; box-shadow: 0 0 0 4px #ffb3a422; }
+.remote-name { display: grid; gap: 2px; }
+.remote-name strong { font-size: 17px; }
+.session-id { color: var(--muted); font-size: 12px; letter-spacing: .08em; }
+.connection-pill { margin-left: auto; padding: 7px 11px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.feedback { min-height: 19px; margin: 14px 0 4px; color: var(--muted); font-size: 13px; text-align: center; }
+.feedback.is-error { color: #ffd0c8; }
+.remote-back { min-height: 56px; margin: 8px 0 18px; border: 1px solid var(--border); background: var(--surface-raised); color: var(--accent); font-size: 17px; font-weight: 800; }
+.remote-group { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+.remote-group h3 { margin: 0 0 12px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.remote-group label { margin: 0 0 8px; }
+.remote-card input[type="text"] { width: 100%; min-height: 52px; padding: 13px 14px; border: 1px solid #565268; border-radius: 12px; outline: none; background: #14131e; color: #fff; font: inherit; font-size: 16px; }
+.dpad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 300px; margin: 0 auto; }
+.remote-key { min-height: 66px; border: 1px solid var(--border); background: var(--surface-raised); color: #fff; font-size: 23px; font-weight: 800; }
+.dpad-select { background: #342a49; color: var(--accent); font-size: 15px; }
+.button-grid { display: grid; gap: 8px; margin-top: 10px; }
+.button-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.button-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.remote-action { min-height: 56px; padding: 8px 4px; border: 1px solid var(--border); background: var(--surface-raised); color: #fff; font-size: 14px; }
+.button-grid.three .remote-action { font-size: 13px; }
+.disconnect { min-height: 56px; margin-top: 22px; border: 1px solid #6d3a34; background: #482925; color: #ffd0c8; font-size: 16px; font-weight: 800; }
+.remote-card button:disabled { opacity: .45; cursor: not-allowed; }
+
 @media (min-width: 480px) { body { padding-right: 24px; padding-left: 24px; } .card { padding: 28px; } }
 @media (prefers-reduced-motion: no-preference) { button { transition: filter 120ms ease, transform 120ms ease; } button:active { transform: scale(.99); } }

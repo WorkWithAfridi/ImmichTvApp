@@ -24,13 +24,9 @@
       <section class="card" aria-live="polite">
         <div id="statusIcon" class="status-icon" aria-hidden="true">↔</div>
         <h2 id="statusTitle">Ready to connect</h2>
-        <p id="statusMessage" class="muted">This page sends setup details directly to your TV over your local network. Your credentials are encrypted before they leave this phone.</p>
-        <div id="verification" class="verification" hidden>
-          <span>Match this code with the code on your TV</span>
-          <strong id="verificationCode" aria-label="Pairing verification code"></strong>
-        </div>
-        <button id="connectButton" class="primary" type="button">Connect to TV</button>
-        <p id="helpMessage" class="help">Keep this page open. You will need to approve the connection on your TV.</p>
+        <p id="statusMessage" class="muted">This page sends setup details directly to your TV over your local network. Keep both devices on the same Wi-Fi.</p>
+        <p id="helpMessage" class="help">Connecting to your TV… Keep this page open.</p>
+        <button id="continueRemoteButton" class="primary" type="button" hidden>Use phone as remote</button>
       </section>
 
       <form id="setupForm" class="card form-card" autocomplete="off" hidden>
@@ -58,10 +54,62 @@
           <input id="apiKey" name="apiKey" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="4096">
         </div>
 
-        <p class="privacy-note"><span aria-hidden="true">●</span> Your password or API key is encrypted on this phone before it is sent to the TV. This page does not store your details.</p>
+        <p class="privacy-note"><span aria-hidden="true">●</span> Use this only on a network you trust. Your password or API key is sent directly to the TV and this page does not store your details.</p>
         <button id="sendButton" class="primary" type="submit">Send setup details to TV</button>
         <p id="formError" class="error" role="alert" hidden></p>
       </form>
+
+      <section id="remotePanel" class="card remote-card" aria-label="TV remote" hidden>
+        <div class="remote-identity">
+          <span id="remoteStatusDot" class="status-dot" aria-hidden="true"></span>
+          <div class="remote-name">
+            <strong>Immich TV</strong>
+            <span id="remoteSession" class="session-id"></span>
+          </div>
+          <span id="remoteConnection" class="connection-pill">Disconnected</span>
+        </div>
+        <p id="remoteFeedback" class="feedback" aria-live="polite">Ready</p>
+
+        <button id="backButton" class="remote-back" type="button" data-command="back"><span aria-hidden="true">←</span> Back</button>
+
+        <div class="remote-group">
+          <h3>Direction</h3>
+          <div class="dpad" aria-label="Directional controls">
+            <span aria-hidden="true"></span>
+            <button class="remote-key dpad-up" type="button" data-command="up" aria-label="Up">↑</button>
+            <span aria-hidden="true"></span>
+            <button class="remote-key dpad-left" type="button" data-command="left" aria-label="Left">←</button>
+            <button class="remote-key dpad-select" type="button" data-command="select" aria-label="Select">Select</button>
+            <button class="remote-key dpad-right" type="button" data-command="right" aria-label="Right">→</button>
+            <span aria-hidden="true"></span>
+            <button class="remote-key dpad-down" type="button" data-command="down" aria-label="Down">↓</button>
+            <span aria-hidden="true"></span>
+          </div>
+        </div>
+
+        <div class="remote-group">
+          <h3>Text entry</h3>
+          <label for="remoteText">Text to send to your TV</label>
+          <input id="remoteText" name="remoteText" type="text" maxlength="256" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type something…">
+          <div class="button-grid two">
+            <button class="remote-action" type="button" data-command="sendText">Send text</button>
+            <button class="remote-action" type="button" data-command="backspace">Backspace</button>
+            <button class="remote-action" type="button" data-command="clearText">Clear</button>
+            <button class="remote-action" type="button" data-command="submitText">Submit</button>
+          </div>
+        </div>
+
+        <div class="remote-group">
+          <h3>Playback</h3>
+          <div class="button-grid three">
+            <button class="remote-action" type="button" data-command="seekBack">↶ 10s</button>
+            <button class="remote-action" type="button" data-command="togglePlayback">Play / Pause</button>
+            <button class="remote-action" type="button" data-command="seekForward">10s ↷</button>
+          </div>
+        </div>
+
+        <button id="disconnectButton" class="disconnect" type="button" data-command="disconnect">Disconnect</button>
+      </section>
 
       <footer>
         <p>Having trouble? Continue setup with the keyboard on your TV.</p>

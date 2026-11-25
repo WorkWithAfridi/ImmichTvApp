@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +10,9 @@ import 'package:immichtv/src/core/models/server_config.dart';
 import 'package:immichtv/src/core/models/user_profile.dart';
 import 'package:immichtv/src/core/repositories/auth_repository.dart';
 import 'package:immichtv/src/features/home/home_screen.dart';
+import 'package:immichtv/src/features/remote_pairing/pairing_protocol.dart';
+import 'package:immichtv/src/features/remote_pairing/pairing_service.dart';
+import 'package:immichtv/src/features/remote_pairing/remote_command.dart';
 import 'package:immichtv/src/features/settings/cubit/settings_cubit.dart';
 import 'package:immichtv/src/shared/presentation/widgets/on_screen_keyboard/on_screen_keyboard.dart';
 
@@ -184,6 +189,144 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('settings exposes phone remote pairing and disconnect', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+    addTearDown(() => tester.view.resetDevicePixelRatio());
+
+    final repository = _FakeAuthRepository(
+      profile: _savedProfile(pinEnabled: false),
+    );
+    final session = _session();
+    final pairingService = _FakePairingService();
+    addTearDown(pairingService.dispose);
+
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<AuthRepository>.value(value: repository),
+          RepositoryProvider<PhonePairingService>.value(value: pairingService),
+        ],
+        child: MaterialApp(
+          home: BlocProvider(
+            create: (_) =>
+                SettingsCubit(authRepository: repository, session: session),
+            child: Scaffold(
+              body: SettingsScreen(
+                session: session,
+                isSidebarOpen: false,
+                primaryContentFocusNode: FocusNode(),
+                menuToggleFocusNode: FocusNode(),
+                onToggleSidebar: () {},
+                onOpenSidebar: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('PHONE REMOTE'), findsOneWidget);
+    final pairButton = find.text('Pair a phone');
+    await tester.ensureVisible(pairButton);
+    await tester.tap(pairButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Use your phone as a remote'), findsOneWidget);
+    expect(pairingService.lastStartMode, PhonePairingMode.remote);
+
+    pairingService.emit(
+      PairingSnapshot(
+        sessionId: 'session-1',
+        phase: PairingPhase.active,
+        expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // The dialog releases the TV UI on approval; the status control remains.
+    expect(find.text('A phone is connected as a remote.'), findsOneWidget);
+    final disconnect = find.text('Disconnect phone');
+    await tester.ensureVisible(disconnect);
+    await tester.tap(disconnect);
+    await tester.pumpAndSettle();
+    expect(pairingService.stopCount, 1);
+  });
+}
+
+class _FakePairingService implements PhonePairingService {
+  final _updates = StreamController<PairingSnapshot?>.broadcast();
+  final _commands = StreamController<RemoteCommandRequest>.broadcast();
+  final _inputs = StreamController<PhoneOnboardingInput>.broadcast();
+  PairingSnapshot? _snapshot;
+  PhonePairingMode? lastStartMode;
+  int stopCount = 0;
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  PairingSnapshot? get snapshot => _snapshot;
+
+  @override
+  Stream<PairingSnapshot?> get updates => _updates.stream;
+
+  @override
+  Stream<PhoneOnboardingInput> get onboardingInputs => _inputs.stream;
+
+  @override
+  Stream<RemoteCommandRequest> get remoteCommands => _commands.stream;
+
+  @override
+  Future<PairingConnection> start({
+    PhonePairingMode mode = PhonePairingMode.setup,
+  }) async {
+    lastStartMode = mode;
+    final uri = Uri.parse('https://companion.test/phone/');
+    return PairingConnection(
+      invitation: PairingInvitation(
+        sessionId: 'session-1',
+        bootstrapToken: 'token',
+        expiresAt: DateTime.now().add(const Duration(minutes: 3)),
+      ),
+      qrUri: uri,
+      manualUris: [uri],
+      mode: mode,
+    );
+  }
+
+  @override
+  PairingSnapshot approve() => _snapshot!;
+
+  @override
+  PairingSnapshot deny() => _snapshot!;
+
+  @override
+  void resolveRemoteCommand(
+    RemoteCommandRequest request,
+    RemoteCommandOutcome outcome,
+  ) => request.complete(outcome);
+
+  @override
+  Future<void> stop() async {
+    stopCount++;
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _updates.close();
+    await _commands.close();
+    await _inputs.close();
+  }
+
+  void emit(PairingSnapshot? snapshot) {
+    _snapshot = snapshot;
+    _updates.add(snapshot);
+  }
 }
 
 class _FakeAuthRepository implements AuthRepository {

@@ -69,6 +69,13 @@ flutter:
   uses-material-design: true
   assets:
     - assets/png/
+    # Single source of truth for the TV-hosted phone companion page.
+    - phone_companion/index.html
+    - phone_companion/app.js
+    - phone_companion/styles.css
+    - phone_companion/commands.js
+    - phone_companion/plain.js
+    - phone_companion/crypto.js
 
   # To add assets to your application, add an assets section, like this:
   # assets:

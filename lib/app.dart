@@ -17,6 +17,7 @@ import 'src/core/repositories/playback_preferences.dart';
 import 'src/core/repositories/server_repository.dart';
 import 'src/core/services/server_url_normalizer.dart';
 import 'src/features/app_flow/cubit/app_flow_cubit.dart';
+import 'src/features/app_flow/cubit/app_flow_state.dart';
 import 'src/features/auth/data/immich_auth_repository.dart';
 import 'src/features/library/data/immich_asset_detail_repository.dart';
 import 'src/features/library/data/immich_asset_image_repository.dart';
@@ -28,6 +29,10 @@ import 'src/features/mock/data/mock_media_repository.dart';
 import 'src/features/mock/data/mock_server_repository.dart';
 import 'src/features/onboarding/data/immich_server_capabilities_repository.dart';
 import 'src/features/onboarding/data/immich_server_repository.dart';
+import 'src/features/remote_pairing/pairing_service.dart';
+import 'src/features/remote_pairing/pairing_service_factory.dart';
+import 'src/features/remote_pairing/remote_command_controller.dart';
+import 'src/features/remote_pairing/tv_remote_actions.dart';
 import 'src/platform/storage/platform_playback_preferences.dart';
 import 'src/platform/storage/platform_profile_storage.dart';
 import 'src/shared/presentation/app_colors.dart';
@@ -48,6 +53,8 @@ class ImmichTvApp extends StatelessWidget {
     AssetDetailRepository? assetDetailRepository,
     PlaybackPreferences? playbackPreferences,
     HlsSessionRepository? hlsSessionRepository,
+    PhonePairingService? phonePairingService,
+    RemoteActionHandler? remoteActionHandler,
     bool? useMockServices,
   }) : _environment = AppEnvironment(useMockServices: useMockServices ?? false),
        _playbackPreferences =
@@ -81,6 +88,9 @@ class ImmichTvApp extends StatelessWidget {
                : ImmichAssetDetailRepository(dio: ImmichDioFactory.create())),
        _assetImageRepository =
            assetImageRepository ?? ImmichAssetImageRepository(),
+        _phonePairingService =
+            phonePairingService ?? createPhonePairingService(),
+        _remoteActionHandler = remoteActionHandler,
        _mediaRepository =
            mediaRepository ??
            ((useMockServices ?? false)
@@ -101,6 +111,8 @@ class ImmichTvApp extends StatelessWidget {
   late final AssetImageRepository _assetImageRepository;
   late final ServerRepository _serverRepository;
   late final MediaRepository _mediaRepository;
+  final PhonePairingService _phonePairingService;
+  final RemoteActionHandler? _remoteActionHandler;
 
   @override
   Widget build(BuildContext context) {
@@ -302,9 +314,17 @@ class ImmichTvApp extends StatelessWidget {
         ),
         home: RebuildMetrics.isEnabled
             ? ImmichPerformanceOverlay(
-                child: _AdaptiveAppEntry(authRepository: _authRepository),
+                child: _AdaptiveAppEntry(
+                  authRepository: _authRepository,
+                  phonePairingService: _phonePairingService,
+                  remoteActionHandler: _remoteActionHandler,
+                ),
               )
-            : _AdaptiveAppEntry(authRepository: _authRepository),
+            : _AdaptiveAppEntry(
+                authRepository: _authRepository,
+                phonePairingService: _phonePairingService,
+                remoteActionHandler: _remoteActionHandler,
+              ),
       ),
     );
   }
@@ -312,31 +332,111 @@ class ImmichTvApp extends StatelessWidget {
 }
 
 class _AdaptiveAppEntry extends StatelessWidget {
-  const _AdaptiveAppEntry({required this.authRepository});
+  const _AdaptiveAppEntry({
+    required this.authRepository,
+    required this.phonePairingService,
+    this.remoteActionHandler,
+  });
 
   final AuthRepository authRepository;
+  final PhonePairingService phonePairingService;
+  final RemoteActionHandler? remoteActionHandler;
 
   @override
   Widget build(BuildContext context) {
-    return _AdaptiveViewportGate(authRepository: authRepository);
+    return _AdaptiveViewportGate(
+      authRepository: authRepository,
+      phonePairingService: phonePairingService,
+      remoteActionHandler: remoteActionHandler,
+    );
   }
 }
 
 class _AdaptiveViewportGate extends StatefulWidget {
-  const _AdaptiveViewportGate({required this.authRepository});
+  const _AdaptiveViewportGate({
+    required this.authRepository,
+    required this.phonePairingService,
+    this.remoteActionHandler,
+  });
 
   final AuthRepository authRepository;
+  final PhonePairingService phonePairingService;
+  final RemoteActionHandler? remoteActionHandler;
 
   @override
   State<_AdaptiveViewportGate> createState() => _AdaptiveViewportGateState();
 }
 
-class _AdaptiveViewportGateState extends State<_AdaptiveViewportGate> {
+class _AdaptiveViewportGateState extends State<_AdaptiveViewportGate>
+    with WidgetsBindingObserver {
+  late final RemotePlaybackRegistry _playbackRegistry;
+  late final RemoteCommandController _remoteController;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _playbackRegistry = RemotePlaybackRegistry();
+    _remoteController = RemoteCommandController(
+      service: widget.phonePairingService,
+      actions: widget.remoteActionHandler ??
+          FocusRemoteActionHandler(_playbackRegistry),
+    )..start();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _remoteController.dispose();
+    widget.phonePairingService.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _remoteController.setAppActive(true);
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        _remoteController.setAppActive(false);
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _remoteController.setAppActive(false);
+        unawaited(widget.phonePairingService.stop());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => AppFlowCubit(widget.authRepository)..initialize(),
-      child: const AppShell(),
+      child: BlocListener<AppFlowCubit, AppFlowState>(
+        listener: (context, state) {
+          _remoteController.setSurface(
+            switch (state.stage) {
+              AppStage.bootstrap => RemoteAppSurface.bootstrap,
+              AppStage.onboarding => RemoteAppSurface.onboarding,
+              AppStage.profilePicker => RemoteAppSurface.home,
+              AppStage.home => RemoteAppSurface.home,
+            },
+          );
+        },
+        child: MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider<PhonePairingService>.value(
+              value: widget.phonePairingService,
+            ),
+            RepositoryProvider<RemoteCommandController>.value(
+              value: _remoteController,
+            ),
+            RepositoryProvider<RemotePlaybackRegistry>.value(
+              value: _playbackRegistry,
+            ),
+          ],
+          child: const AppShell(),
+        ),
+      ),
     );
   }
 }

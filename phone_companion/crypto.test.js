@@ -3,10 +3,13 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
   createApprovalCode,
+  decryptFromTv,
   derivePhoneCryptoSession,
+  encryptRemoteCommand,
   fromBase64Url,
   toBase64Url,
 } from './crypto.js';
+import { buildNavigateCommand } from './commands.js';
 
 const vector = JSON.parse(await readFile(new URL('./crypto_test_vectors.json', import.meta.url), 'utf8'));
 const hex = (value) => Uint8Array.from(Buffer.from(value, 'hex'));
@@ -74,3 +77,131 @@ test('rejects a low-order all-zero TV public key', async () => {
     /invalid_public_key/,
   );
 });
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder('utf-8', { fatal: true });
+
+async function phoneSession() {
+  const privateKey = await crypto.subtle.importKey('jwk', bob, { name: 'X25519' }, false, ['deriveBits']);
+  const publicKey = await crypto.subtle.importKey(
+    'jwk',
+    { kty: 'OKP', crv: 'X25519', x: bob.x, ext: true, key_ops: [] },
+    { name: 'X25519' },
+    false,
+    [],
+  );
+  return derivePhoneCryptoSession(
+    fromBase64Url(vector.tvPublic),
+    vector.sessionId,
+    { privateKey, publicKey },
+    fromBase64Url(vector.phonePublic),
+  );
+}
+
+// Re-derive the TV-to-phone AES key so the test can produce an ack exactly as
+// the TV does, without exposing extra key material from crypto.js.
+async function deriveKeyset() {
+  const alicePrivate = await crypto.subtle.importKey('jwk', alice, { name: 'X25519' }, false, ['deriveBits']);
+  const bobPublic = await crypto.subtle.importKey(
+    'jwk',
+    { kty: 'OKP', crv: 'X25519', x: vector.phonePublic, ext: true, key_ops: [] },
+    { name: 'X25519' },
+    false,
+    [],
+  );
+  const shared = new Uint8Array(await crypto.subtle.deriveBits(
+    { name: 'X25519', public: bobPublic }, alicePrivate, 256,
+  ));
+  const hkdfMaterial = await crypto.subtle.importKey('raw', shared, 'HKDF', false, ['deriveBits']);
+  const keyset = new Uint8Array(await crypto.subtle.deriveBits({
+    name: 'HKDF', hash: 'SHA-256',
+    salt: textEncoder.encode(`immich-tv-pairing-v1:${vector.sessionId}`),
+    info: textEncoder.encode('immich-tv-session-keyset-v1'),
+  }, hkdfMaterial, 1024));
+  assert.equal(toBase64Url(keyset.slice(96, 128)), vector.sessionToken);
+  return keyset;
+}
+
+async function tvToPhoneEncryptKey() {
+  const keyset = await deriveKeyset();
+  return crypto.subtle.importKey('raw', keyset.slice(32, 64), { name: 'AES-GCM' }, false, ['encrypt']);
+}
+
+async function phoneToTvDecryptKey() {
+  const keyset = await deriveKeyset();
+  return crypto.subtle.importKey('raw', keyset.slice(0, 32), { name: 'AES-GCM' }, false, ['decrypt']);
+}
+
+async function encryptAckFromTv(ack, direction = 'tv-to-phone') {
+  const nonce = crypto.getRandomValues(new Uint8Array(12));
+  const aad = textEncoder.encode(
+    `immich-tv-pairing|1|${vector.sessionId}|${direction}|${ack.seq}|ack`,
+  );
+  const encrypted = new Uint8Array(await crypto.subtle.encrypt({
+    name: 'AES-GCM', iv: nonce, additionalData: aad, tagLength: 128,
+  }, await tvToPhoneEncryptKey(), textEncoder.encode(JSON.stringify(ack))));
+  return {
+    v: 1,
+    type: 'ack',
+    sessionId: vector.sessionId,
+    seq: ack.seq,
+    nonce: toBase64Url(nonce),
+    ciphertext: toBase64Url(encrypted.slice(0, -16)),
+    tag: toBase64Url(encrypted.slice(-16)),
+  };
+}
+
+test('remote commands encrypt with the phone-to-tv key and strict envelope', async () => {
+  const keys = await phoneSession();
+  const command = buildNavigateCommand(9, 'up');
+  const message = await encryptRemoteCommand(keys, vector.sessionId, 9, command);
+  assert.deepEqual(Object.keys(message).sort(), [
+    'ciphertext', 'nonce', 'seq', 'sessionId', 'tag', 'type', 'v',
+  ]);
+  assert.equal(message.v, 1);
+  assert.equal(message.type, 'remoteCommand');
+  assert.equal(message.sessionId, vector.sessionId);
+  assert.equal(message.seq, 9);
+
+  const sealed = new Uint8Array([
+    ...fromBase64Url(message.ciphertext), ...fromBase64Url(message.tag),
+  ]);
+  const aad = textEncoder.encode(
+    `immich-tv-pairing|1|${vector.sessionId}|phone-to-tv|9|remoteCommand`,
+  );
+  const plaintext = new Uint8Array(await crypto.subtle.decrypt({
+    name: 'AES-GCM', iv: fromBase64Url(message.nonce), additionalData: aad, tagLength: 128,
+  }, await phoneToTvDecryptKey(), sealed));
+  assert.deepEqual(JSON.parse(textDecoder.decode(plaintext)), command);
+});
+
+test('ack round trip succeeds and tampered envelopes are rejected', async () => {
+  const keys = await phoneSession();
+  const ack = { v: 1, type: 'ack', seq: 10, accepted: true, outcome: 'ok' };
+  const message = await encryptAckFromTv(ack);
+  assert.deepEqual(await decryptFromTv(keys, message, vector.sessionId), ack);
+
+  const tamperedTag = fromBase64Url(message.tag);
+  tamperedTag[0] ^= 1;
+  await assert.rejects(
+    decryptFromTv(keys, { ...message, tag: toBase64Url(tamperedTag) }, vector.sessionId),
+    /invalid_message/,
+  );
+  await assert.rejects(
+    decryptFromTv(keys, { ...message, seq: message.seq + 1 }, vector.sessionId),
+    /invalid_message/,
+  );
+  await assert.rejects(
+    decryptFromTv(keys, { ...message, type: 'status' }, vector.sessionId),
+    /invalid_message/,
+  );
+  await assert.rejects(
+    decryptFromTv(keys, message, 'another-session'),
+    /invalid_message/,
+  );
+  await assert.rejects(
+    decryptFromTv(keys, await encryptAckFromTv(ack, 'phone-to-tv'), vector.sessionId),
+    /invalid_message/,
+  );
+});
+

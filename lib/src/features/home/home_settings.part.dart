@@ -44,6 +44,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   );
   final FocusNode _hlsOffFocusNode = FocusNode(debugLabel: 'settings.hls.off');
   final FocusNode _hlsOnFocusNode = FocusNode(debugLabel: 'settings.hls.on');
+  final FocusNode _remoteConnectFocusNode = FocusNode(
+    debugLabel: 'settings.remote.connect',
+  );
+  final FocusNode _remoteDisconnectFocusNode = FocusNode(
+    debugLabel: 'settings.remote.disconnect',
+  );
   bool _isEnrollingPin = false;
   String? _pinError;
 
@@ -69,7 +75,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _pinSaveFocusNode.dispose();
     _hlsOffFocusNode.dispose();
     _hlsOnFocusNode.dispose();
+    _remoteConnectFocusNode.dispose();
+    _remoteDisconnectFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _startPhoneRemote() async {
+    final service = maybeRemoteRepository<PhonePairingService>(context);
+    if (service == null || !service.isSupported) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Phone remote is not available on this platform.'),
+        ),
+      );
+      return;
+    }
+    await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PhonePairingDialog(
+        service: service,
+        mode: PhonePairingMode.remote,
+      ),
+    );
+  }
+
+  Future<void> _disconnectPhone() async {
+    await maybeRemoteRepository<PhonePairingService>(context)?.stop();
   }
 
   void _startEnrollingPin() {
@@ -164,6 +196,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (_isEnrollingPin) _pinSaveFocusNode,
       _hlsOffFocusNode,
       _hlsOnFocusNode,
+      _remoteConnectFocusNode,
+      _remoteDisconnectFocusNode,
     ];
     final currentIndex = nodes.indexWhere((node) => node.hasFocus);
     final forward =
@@ -301,6 +335,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                     SizedBox(height: _settingsSectionSpacing(context)),
+                    const _SettingsGroupLabel(label: 'PHONE REMOTE'),
+                    SizedBox(height: _settingsChipSpacing(context)),
+                    Text(
+                      'Control this TV from a paired phone on the same network. The phone never receives your Immich session.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: AppScale.of(
+                          context,
+                        ).text(14, min: 12, max: 16),
+                      ),
+                    ),
+                    SizedBox(height: _settingsChipSpacing(context)),
+                    _RemoteSessionControl(
+                      connectFocusNode: _remoteConnectFocusNode,
+                      disconnectFocusNode: _remoteDisconnectFocusNode,
+                      onConnect: _startPhoneRemote,
+                      onDisconnect: _disconnectPhone,
+                    ),
+                    SizedBox(height: _settingsSectionSpacing(context)),
                     const _SettingsGroupLabel(label: 'PLAYBACK'),
                     SizedBox(height: _settingsChipSpacing(context)),
                     Text(
@@ -350,6 +403,132 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RemoteSessionControl extends StatelessWidget {
+  const _RemoteSessionControl({
+    required this.connectFocusNode,
+    required this.disconnectFocusNode,
+    required this.onConnect,
+    required this.onDisconnect,
+  });
+
+  final FocusNode connectFocusNode;
+  final FocusNode disconnectFocusNode;
+  final VoidCallback onConnect;
+  final VoidCallback onDisconnect;
+
+  @override
+  Widget build(BuildContext context) {
+    final service = maybeRemoteRepository<PhonePairingService>(context);
+    if (service == null) return const SizedBox.shrink();
+    return StreamBuilder<PairingSnapshot?>(
+      stream: service.updates,
+      initialData: service.snapshot,
+      builder: (context, snapshot) {
+        final paired = snapshot.data?.phase == PairingPhase.active;
+        final status = paired
+            ? 'A phone is connected as a remote.'
+            : 'No phone is connected.';
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              status,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: paired ? AppColors.focus : AppColors.textMuted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: _settingsChipSpacing(context)),
+            Row(
+              children: [
+                TvFocusable(
+                  focusNode: connectFocusNode,
+                  onPressed: onConnect,
+                  builder: (_, state) => _RemoteButton(
+                    label: paired ? 'Pair another phone' : 'Pair a phone',
+                    icon: Icons.phone_android_rounded,
+                    isFocused: state.isFocused,
+                    isActive: state.isActive,
+                  ),
+                ),
+                if (paired) ...[
+                  SizedBox(width: _settingsChipSpacing(context)),
+                  TvFocusable(
+                    focusNode: disconnectFocusNode,
+                    onPressed: onDisconnect,
+                    builder: (_, state) => _RemoteButton(
+                      label: 'Disconnect phone',
+                      icon: Icons.link_off_rounded,
+                      isFocused: state.isFocused,
+                      isActive: state.isActive,
+                      destructive: true,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RemoteButton extends StatelessWidget {
+  const _RemoteButton({
+    required this.label,
+    required this.icon,
+    required this.isFocused,
+    required this.isActive,
+    this.destructive = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isFocused;
+  final bool isActive;
+  final bool destructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = AppScale.of(context);
+    return AnimatedContainer(
+      duration: AppDurations.normal,
+      padding: EdgeInsets.symmetric(
+        horizontal: scale.space(AppSpacing.md, min: 12, max: 18),
+        vertical: scale.space(AppSpacing.sm, min: 10, max: 14),
+      ),
+      decoration: AppFocusDecoration.surface(
+        isFocused: isFocused,
+        isActive: isActive,
+        isSelected: false,
+        backgroundColor: AppColors.backgroundElevated,
+        activeBackgroundColor: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(
+          scale.radius(AppRadii.md, min: 12, max: 16),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: destructive ? AppColors.immichRed : AppColors.textPrimary,
+            size: scale.sizeOf(20, min: 18, max: 22),
+          ),
+          SizedBox(width: scale.space(AppSpacing.sm, min: 8, max: 10)),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: destructive ? AppColors.immichRed : AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

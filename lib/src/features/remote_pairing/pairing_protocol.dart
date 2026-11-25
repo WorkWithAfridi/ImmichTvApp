@@ -89,12 +89,14 @@ class PairingSnapshot {
     required this.phase,
     required this.expiresAt,
     this.verificationCode,
+    this.lastAcceptedSequence = 0,
   });
 
   final String sessionId;
   final PairingPhase phase;
   final DateTime expiresAt;
   final String? verificationCode;
+  final int lastAcceptedSequence;
 }
 
 /// Versioned, allowlisted phone input message. Its value is intentionally
@@ -197,6 +199,7 @@ class PairingProtocol {
       phase: session.phase,
       expiresAt: session.expiresAt,
       verificationCode: session.verificationCode,
+      lastAcceptedSequence: session.lastAcceptedSequence,
     );
   }
 
@@ -405,7 +408,7 @@ class PairingProtocol {
   }
 }
 
-/// Complete setup form submitted as one encrypted, one-time payload.
+/// Complete setup form submitted as one one-time payload.
 class PhoneOnboardingInput {
   const PhoneOnboardingInput.password({
     required this.serverUrl,

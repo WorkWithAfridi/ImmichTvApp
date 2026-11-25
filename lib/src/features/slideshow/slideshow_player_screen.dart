@@ -12,6 +12,7 @@ import '../../shared/presentation/app_spacing.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
 import '../../shared/presentation/widgets/loading_skeleton.dart';
 import '../../shared/presentation/widgets/tv_focusable.dart';
+import '../remote_pairing/tv_remote_actions.dart';
 import 'slideshow_page_loader.dart';
 
 class SlideshowPlayerScreen extends StatefulWidget {
@@ -76,7 +77,8 @@ class SlideshowPlayerScreen extends StatefulWidget {
   State<SlideshowPlayerScreen> createState() => _SlideshowPlayerScreenState();
 }
 
-class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
+class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen>
+    implements RemotePlaybackTarget {
   late final List<AssetSummary> _assets;
   late bool _hasMore;
   bool _isLoadingMore = false;
@@ -87,10 +89,15 @@ class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
   late final FocusNode _slideshowFocusNode;
   late final FocusNode _playPauseButtonFocusNode;
   late final FocusNode _closeButtonFocusNode;
+  RemotePlaybackRegistry? _remotePlaybackRegistry;
 
   @override
   void initState() {
     super.initState();
+    _remotePlaybackRegistry = maybeRemoteRepository<RemotePlaybackRegistry>(
+      context,
+    );
+    _remotePlaybackRegistry?.register(this);
     _assets = List<AssetSummary>.from(widget.assets);
     if (widget.shuffle) {
       _assets.shuffle(Random(17));
@@ -105,7 +112,21 @@ class _SlideshowPlayerScreenState extends State<SlideshowPlayerScreen> {
   }
 
   @override
+  @override
+  bool get isRemotePlaybackAvailable => true;
+
+  @override
+  bool get supportsSeek => false;
+
+  @override
+  void togglePlayback() => _togglePlayback();
+
+  @override
+  void seekBy(Duration delta) {}
+
+  @override
   void dispose() {
+    _remotePlaybackRegistry?.unregister(this);
     _advanceTimer?.cancel();
     _slideshowFocusNode.dispose();
     _playPauseButtonFocusNode.dispose();
