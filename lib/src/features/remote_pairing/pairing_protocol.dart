@@ -201,6 +201,8 @@ class PairingProtocol {
   }
 
   PairingInvitation start() {
+    final previous = _session;
+    if (previous != null) _terminate(previous, PairingPhase.revoked);
     _session = null;
     final now = _clock();
     final id = _randomToken(16);
@@ -222,6 +224,7 @@ class PairingProtocol {
   PairingSnapshot requestApproval({
     required String sessionId,
     required String bootstrapToken,
+    String? verificationCode,
   }) {
     final session = _requireSession(sessionId);
     _requirePhase(session, PairingPhase.waitingForPhone);
@@ -230,19 +233,26 @@ class PairingProtocol {
       throw const PairingProtocolException(PairingFailure.invalidCredential);
     }
 
-    session.phase = PairingPhase.approvalPending;
-    session.verificationCode = _entropy
-        .nextInt(1000000)
-        .toString()
-        .padLeft(6, '0');
+    final code =
+        verificationCode ??
+        _entropy.nextInt(1000000).toString().padLeft(6, '0');
+    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+      throw const PairingProtocolException(PairingFailure.invalidMessage);
+    }
+    session
+      ..phase = PairingPhase.approvalPending
+      ..verificationCode = code;
     return snapshot!;
   }
 
-  PairingGrant approve({required String sessionId}) {
+  PairingGrant approve({required String sessionId, String? sessionToken}) {
     final session = _requireSession(sessionId);
     _requirePhase(session, PairingPhase.approvalPending);
 
-    final token = _randomToken(32);
+    final token = sessionToken ?? _randomToken(32);
+    if (token.length < 32 || token.length > 256) {
+      throw const PairingProtocolException(PairingFailure.invalidCredential);
+    }
     session
       ..phase = PairingPhase.active
       ..bootstrapToken = null
@@ -268,6 +278,19 @@ class PairingProtocol {
     required String sessionToken,
     required PhoneInputEnvelope input,
   }) {
+    acceptSequence(
+      sessionId: sessionId,
+      sessionToken: sessionToken,
+      sequence: input.sequence,
+    );
+    return input;
+  }
+
+  void acceptSequence({
+    required String sessionId,
+    required String sessionToken,
+    required int sequence,
+  }) {
     final session = _requireSession(sessionId);
     _requirePhase(session, PairingPhase.active);
     if (!_matches(session.sessionToken, sessionToken)) {
@@ -275,14 +298,13 @@ class PairingProtocol {
       throw const PairingProtocolException(PairingFailure.invalidCredential);
     }
     final lastSequence = session.lastAcceptedSequence;
-    if (input.sequence <= lastSequence) {
+    if (sequence <= lastSequence) {
       throw const PairingProtocolException(PairingFailure.replayedMessage);
     }
-    if (input.sequence != lastSequence + 1) {
+    if (sequence != lastSequence + 1) {
       throw const PairingProtocolException(PairingFailure.invalidSequence);
     }
-    session.lastAcceptedSequence = input.sequence;
-    return input;
+    session.lastAcceptedSequence = sequence;
   }
 
   void revoke({required String sessionId}) {
@@ -361,6 +383,92 @@ class PairingProtocol {
     }
     return difference == 0;
   }
+}
+
+/// Complete setup form submitted as one encrypted, one-time payload.
+class PhoneOnboardingInput {
+  const PhoneOnboardingInput.password({
+    required this.serverUrl,
+    required this.email,
+    required this.password,
+  }) : authMethod = 'password',
+       apiKey = null;
+
+  const PhoneOnboardingInput.apiKey({
+    required this.serverUrl,
+    required this.apiKey,
+  }) : authMethod = 'apiKey',
+       email = null,
+       password = null;
+
+  final String serverUrl;
+  final String authMethod;
+  final String? email;
+  final String? password;
+  final String? apiKey;
+
+  static const maxEncodedBytes = 12 * 1024;
+
+  factory PhoneOnboardingInput.fromJson(Map<String, Object?> json) {
+    final method = json['authMethod'];
+    final serverUrl = json['serverUrl'];
+    if (json['v'] != 1 ||
+        json['type'] != 'onboardingInput' ||
+        serverUrl is! String ||
+        serverUrl.trim().isEmpty ||
+        utf8.encode(serverUrl).length > 2048) {
+      throw const PairingProtocolException(PairingFailure.invalidMessage);
+    }
+
+    final PhoneOnboardingInput input;
+    if (method == 'password') {
+      final email = json['email'];
+      final password = json['password'];
+      if (json.length != 6 ||
+          email is! String ||
+          email.trim().isEmpty ||
+          utf8.encode(email).length > 320 ||
+          password is! String ||
+          password.isEmpty ||
+          utf8.encode(password).length > 4096) {
+        throw const PairingProtocolException(PairingFailure.invalidMessage);
+      }
+      input = PhoneOnboardingInput.password(
+        serverUrl: serverUrl,
+        email: email,
+        password: password,
+      );
+    } else if (method == 'apiKey') {
+      final apiKey = json['apiKey'];
+      if (json.length != 5 ||
+          apiKey is! String ||
+          apiKey.trim().isEmpty ||
+          utf8.encode(apiKey).length > 4096) {
+        throw const PairingProtocolException(PairingFailure.invalidMessage);
+      }
+      input = PhoneOnboardingInput.apiKey(serverUrl: serverUrl, apiKey: apiKey);
+    } else {
+      throw const PairingProtocolException(PairingFailure.invalidMessage);
+    }
+
+    if (utf8.encode(jsonEncode(input.toJson())).length > maxEncodedBytes) {
+      throw const PairingProtocolException(PairingFailure.invalidMessage);
+    }
+    return input;
+  }
+
+  Map<String, Object> toJson() => {
+    'v': 1,
+    'type': 'onboardingInput',
+    'serverUrl': serverUrl,
+    'authMethod': authMethod,
+    if (authMethod == 'password') ...{'email': email!, 'password': password!},
+    if (authMethod == 'apiKey') 'apiKey': apiKey!,
+  };
+
+  @override
+  String toString() =>
+      'PhoneOnboardingInput(authMethod: $authMethod, credentials: [REDACTED])';
 }
 
 class _PairingSession {

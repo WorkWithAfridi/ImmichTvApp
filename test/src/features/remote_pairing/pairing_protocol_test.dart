@@ -262,6 +262,75 @@ void main() {
       expect(input.toString(), isNot(contains(secret)));
     });
   });
+
+  group('PhoneOnboardingInput', () {
+    test('validates both auth modes and preserves password characters', () {
+      final passwordInput = PhoneOnboardingInput.fromJson({
+        'v': 1,
+        'type': 'onboardingInput',
+        'serverUrl': 'https://photos.example.com',
+        'authMethod': 'password',
+        'email': ' person@example.com ',
+        'password': '  p@ss:word\n',
+      });
+      expect(passwordInput.password, '  p@ss:word\n');
+      expect(passwordInput.toJson()['authMethod'], 'password');
+
+      final apiKeyInput = PhoneOnboardingInput.fromJson({
+        'v': 1,
+        'type': 'onboardingInput',
+        'serverUrl': 'http://192.168.1.20:2283',
+        'authMethod': 'apiKey',
+        'apiKey': ' key-with-punctuation! ',
+      });
+      expect(apiKeyInput.apiKey, ' key-with-punctuation! ');
+    });
+
+    test(
+      'rejects missing, mixed-mode, extra, and oversized credential fields',
+      () {
+        final invalid = [
+          {
+            'v': 1,
+            'type': 'onboardingInput',
+            'serverUrl': 'https://photos.example.com',
+            'authMethod': 'password',
+            'email': 'person@example.com',
+          },
+          {
+            'v': 1,
+            'type': 'onboardingInput',
+            'serverUrl': 'https://photos.example.com',
+            'authMethod': 'apiKey',
+            'apiKey': 'key',
+            'password': 'unexpected',
+          },
+          {
+            'v': 1,
+            'type': 'onboardingInput',
+            'serverUrl': 'https://photos.example.com',
+            'authMethod': 'password',
+            'email': 'person@example.com',
+            'password': List.filled(4097, 'x').join(),
+          },
+        ];
+        for (final value in invalid) {
+          expect(
+            () => PhoneOnboardingInput.fromJson(value),
+            throwsA(isA<PairingProtocolException>()),
+          );
+        }
+      },
+    );
+
+    test('redacts entered credentials from diagnostic text', () {
+      final input = PhoneOnboardingInput.apiKey(
+        serverUrl: 'https://photos.example.com',
+        apiKey: 'secret-api-key',
+      );
+      expect(input.toString(), isNot(contains('secret-api-key')));
+    });
+  });
 }
 
 PhoneInputEnvelope _input(int sequence) => PhoneInputEnvelope(
