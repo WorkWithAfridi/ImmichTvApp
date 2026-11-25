@@ -8,18 +8,20 @@
 
 For sequenced work packages, estimates, dependencies, and exit criteria, see the [development plan](PHONE_PAIRING_DEVELOPMENT_PLAN.md).
 
+The selected credential channel is recorded in [ADR 0001](adr/0001-phone-credential-transport.md). Credential entry remains disabled until its cross-language protocol and trusted HTTPS companion implementation pass review.
+
 ## Recommendation
 
 Build toward a QR-paired, same-network web companion served by or connected directly to the TV app. Use it first to enter the Immich server URL and credentials during onboarding. Evolve the same pairing and transport into a remote-control surface for text entry, navigation, and playback.
 
 Do not use Bluetooth as the primary transport. A phone browser cannot depend on Web Bluetooth across major mobile browsers, and Bluetooth would still require discovery, permissions, pairing, and a separate command protocol. Bluetooth does not solve the session-authentication problem.
 
-There is one release gate before transferring passwords or API keys: choose and validate the transport security model. A local HTTP page is simple and self-hosted, but it does not protect credentials from an active attacker on the LAN who can replace the page or intercept traffic. Pairing approval and a short-lived QR token reduce unauthorized pairing; they do not make HTTP a confidential, authenticated channel. Do not describe that design as secure credential transport.
+There is one release gate before transferring passwords or API keys: implement and validate the selected transport security model. A local HTTP page is simple and self-hosted, but it does not protect credentials from an active attacker on the LAN who can replace the page or intercept traffic. Pairing approval and a short-lived QR token reduce unauthorized pairing; they do not make HTTP a confidential, authenticated channel. Do not describe that design as secure credential transport.
 
 Recommended decision sequence:
 
 1. Prototype local server reachability and browser behavior on target hardware with non-secret test data.
-2. Select a transport that provides page integrity and protects credential data in transit. Evaluate a trusted HTTPS-hosted companion connecting to the TV over a narrowly scoped local endpoint, with ephemeral public-key encryption for payloads. Keep an on-TV fallback if browser permissions or internet availability block pairing.
+2. Implement the selected transport: a trusted HTTPS companion connecting to a narrowly scoped TV endpoint, with QR-pinned ephemeral public-key encryption for payloads. Keep an on-TV fallback if browser permissions or internet availability block pairing.
 3. Only enable phone credential entry after a threat-model review and security tests pass.
 4. Reuse the approved pairing session for a remote-control protocol; keep pairing and remote authorization distinct from Immich authentication.
 
