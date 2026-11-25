@@ -1,7 +1,8 @@
 # Phone Pairing and Remote: Development Plan
 
-**Status:** Ready for Phase 0 planning and prototype  
-**Parent research:** [Phone Pairing and Remote R&D](PHONE_PAIRING_REMOTE_RND.md)  
+**Status:** Implementation in progress; prototype only
+
+**Parent research:** [Phone Pairing and Remote R&D](PHONE_PAIRING_REMOTE_RND.md)
 **Product goal:** Let a user scan a QR code, enter onboarding details on their phone, and later use that paired phone as a TV remote.
 
 ## Delivery principles
@@ -30,6 +31,12 @@ Estimates below are engineering effort for one experienced Flutter engineer, exc
 | M7. Release and follow-up | Staged rollout, support signals, and go/no-go for persistent pairing | 2–4 days | M5; M6 for remote release |
 
 **Planning range:** roughly 29–51 engineer-days for onboarding plus remote, with a go/no-go after M5 if phone onboarding should ship independently. These are initial sizing estimates, not a date commitment.
+
+## Implementation progress
+
+Development is underway on `feature/phone-pairing-remote`. The current prototype contains the onboarding keyboard improvements, an in-memory pairing lifecycle, a TV-hosted local QR preview with explicit TV approval, and a versioned typed remote-command contract with validation and replay/order checks. The phone page currently proves only non-secret pairing status; it does not submit credentials or control the app.
+
+The protocol, local listener, UI, and command contract have automated tests. M0 is still open until the listener and browser flow are exercised on supported TV and phone hardware. M1 is still open until the credential transport is selected and its security properties are reviewed. Do not treat the prototype as a production credential channel or a completed milestone.
 
 ## Trackable milestone breakdown
 
@@ -249,4 +256,3 @@ Treat each `PAIR-###` item as a separately assignable work item. Close a milesto
 2. Capture the resolved release target SDK and identify an API 37 test device/emulator for permission validation.
 3. Run the non-secret QR/listener spike and record Android Chrome/iOS Safari results.
 4. Hold the M1 security/transport review using those results; do not start phone credential UI before the decision is recorded.
-

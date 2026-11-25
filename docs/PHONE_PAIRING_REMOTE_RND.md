@@ -1,7 +1,9 @@
 # Phone Pairing and Remote: R&D and Delivery Plan
 
-**Status:** Proposed architecture; implementation has not started  
-**Product target:** Android TV / Google TV first; browser-based phone companion  
+**Status:** Proposed architecture; prototype implementation is in progress
+
+**Product target:** Android TV / Google TV first; browser-based phone companion
+
 **Scope:** Phone-assisted onboarding now, extensible to a phone remote later
 
 For sequenced work packages, estimates, dependencies, and exit criteria, see the [development plan](PHONE_PAIRING_DEVELOPMENT_PLAN.md).
