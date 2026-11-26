@@ -232,12 +232,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('PHONE REMOTE'), findsOneWidget);
-    final pairButton = find.text('Pair a phone');
+    final pairButton = find.text('Connect a phone');
     await tester.ensureVisible(pairButton);
     await tester.tap(pairButton);
     await tester.pumpAndSettle();
 
-    expect(find.text('Use your phone as a remote'), findsOneWidget);
+    expect(find.text('Phone remote'), findsOneWidget);
     expect(pairingService.lastStartMode, PhonePairingMode.remote);
 
     pairingService.emit(
@@ -248,9 +248,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    // The dialog releases the TV UI on approval; the status control remains.
-    expect(find.text('A phone is connected as a remote.'), findsOneWidget);
-    final disconnect = find.text('Disconnect phone');
+    // The dialog releases the TV UI on connect; the status control remains.
+    expect(find.text('Connected'), findsOneWidget);
+    final disconnect = find.text('Disconnect');
     await tester.ensureVisible(disconnect);
     await tester.tap(disconnect);
     await tester.pumpAndSettle();

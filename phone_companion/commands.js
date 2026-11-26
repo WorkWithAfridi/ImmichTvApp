@@ -91,8 +91,8 @@ export function ackFeedback(ack) {
       typeof ack.accepted !== 'boolean' || !outcomes.has(ack.outcome)) {
     throw new Error('invalid_ack');
   }
-  if (ack.outcome === 'unavailable') return 'Not available on TV';
-  if (ack.outcome === 'ignored') return 'Ignored on TV';
+  if (ack.outcome === 'unavailable') return 'Unavailable';
+  if (ack.outcome === 'ignored') return 'Ignored';
   if (ack.outcome === 'invalid') return 'Failed';
   return ack.accepted ? 'Sent' : 'Failed';
 }

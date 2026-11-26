@@ -338,7 +338,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const _SettingsGroupLabel(label: 'PHONE REMOTE'),
                     SizedBox(height: _settingsChipSpacing(context)),
                     Text(
-                      'Control this TV from a paired phone on the same network. The phone never receives your Immich session.',
+                      'Use a phone on the same Wi‑Fi as a remote. Sign-in stays on this TV.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                         fontSize: AppScale.of(
@@ -368,7 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     SizedBox(height: _settingsChipSpacing(context) / 2),
                     Text(
-                      'Alpha Immich feature (v3+). Uses adaptive quality when available and falls back to regular playback.',
+                      'Smoother playback for supported videos. Falls back to the original quality when unavailable.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppColors.textSecondary,
                         fontSize: AppScale.of(
@@ -430,9 +430,7 @@ class _RemoteSessionControl extends StatelessWidget {
       initialData: service.snapshot,
       builder: (context, snapshot) {
         final paired = snapshot.data?.phase == PairingPhase.active;
-        final status = paired
-            ? 'A phone is connected as a remote.'
-            : 'No phone is connected.';
+        final status = paired ? 'Connected' : 'Not connected';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -450,7 +448,7 @@ class _RemoteSessionControl extends StatelessWidget {
                   focusNode: connectFocusNode,
                   onPressed: onConnect,
                   builder: (_, state) => _RemoteButton(
-                    label: paired ? 'Pair another phone' : 'Pair a phone',
+                    label: paired ? 'Add another phone' : 'Connect a phone',
                     icon: Icons.phone_android_rounded,
                     isFocused: state.isFocused,
                     isActive: state.isActive,
@@ -462,7 +460,7 @@ class _RemoteSessionControl extends StatelessWidget {
                     focusNode: disconnectFocusNode,
                     onPressed: onDisconnect,
                     builder: (_, state) => _RemoteButton(
-                      label: 'Disconnect phone',
+                      label: 'Disconnect',
                       icon: Icons.link_off_rounded,
                       isFocused: state.isFocused,
                       isActive: state.isActive,

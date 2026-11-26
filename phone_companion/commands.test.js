@@ -94,8 +94,8 @@ test('command builders reject out-of-contract values', () => {
 
 test('ack feedback maps accepted and outcome without exposing error text', () => {
   assert.equal(ackFeedback({ v: 1, type: 'ack', seq: 1, accepted: true, outcome: 'ok' }), 'Sent');
-  assert.equal(ackFeedback({ v: 1, type: 'ack', seq: 1, accepted: true, outcome: 'unavailable' }), 'Not available on TV');
+  assert.equal(ackFeedback({ v: 1, type: 'ack', seq: 1, accepted: true, outcome: 'unavailable' }), 'Unavailable');
   assert.equal(ackFeedback({ v: 1, type: 'ack', seq: 1, accepted: false, outcome: 'invalid' }), 'Failed');
-  assert.equal(ackFeedback({ v: 1, type: 'ack', seq: 1, accepted: false, outcome: 'ignored' }), 'Ignored on TV');
+  assert.equal(ackFeedback({ v: 1, type: 'ack', seq: 1, accepted: false, outcome: 'ignored' }), 'Ignored');
   assert.throws(() => ackFeedback({ v: 1, type: 'ack', seq: 1, accepted: true, outcome: 'unknown' }), /invalid_ack/);
 });

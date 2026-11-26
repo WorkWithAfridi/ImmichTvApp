@@ -93,9 +93,9 @@ import {
     if (state.mode === 'remote') {
       enterRemoteMode();
     } else {
-      setStatus('You’re connected', 'Enter your Immich server and sign-in details below. They are sent directly to your TV on your local network.', '✓');
+      setStatus('Connected', 'Enter your Immich server and sign-in details.', '✓');
       setupForm.hidden = false;
-      helpMessage.textContent = 'Keep this page open until the TV confirms your details were received.';
+      helpMessage.textContent = 'Keep this page open until the TV confirms.';
     }
   }
 
@@ -145,19 +145,19 @@ import {
       payload.serverUrl = '';
       clearCredentials();
       setupForm.hidden = true;
-        setStatus('Details sent to your TV', 'Finish server validation and sign-in on the TV screen. This page has cleared the details you entered.', '✓');
+        setStatus('Sent to TV', 'Finish sign-in on the TV. This page has cleared your details.', '✓');
       helpMessage.textContent = response.accepted
-        ? 'You can close this page now, or continue using this phone as a remote.'
-        : 'Continue on the TV to complete setup.';
+        ? 'Close this page, or use this phone as a remote.'
+        : 'Continue on the TV.';
       continueRemoteButton.hidden = false;
     } catch (error) {
       clearCredentials();
       formError.hidden = false;
       formError.textContent = error.message === 'tv_http_403'
-        ? 'The pairing was not approved or has expired. Start a new phone pairing from your TV.'
-        : 'We could not send these details. For your safety, the fields were cleared. Start a new phone pairing and try again, or continue on the TV.';
+        ? 'Session expired. Scan a new QR code on the TV.'
+        : 'Couldn’t send your details. The fields were cleared. Scan a new QR code to try again, or continue on the TV.';
       sendButton.disabled = false;
-      sendButton.textContent = 'Send setup details to TV';
+      sendButton.textContent = 'Send to TV';
       state.sessionToken = null;
     } finally {
       state.sending = false;
@@ -184,8 +184,8 @@ import {
     state.remoteActive = true;
     remotePanel.hidden = false;
     remoteSession.textContent = `Session ${state.invitation.sessionId.slice(0, 6)}`;
-    setStatus('You’re connected', 'Use the controls below to navigate and play media on your TV. Keep this page open while you are connected.', '✓');
-    helpMessage.textContent = 'Commands are sent directly to your TV on your local network.';
+    setStatus('Connected', 'Use the controls to navigate and play on your TV.', '✓');
+    helpMessage.textContent = 'Keep this page open while connected.';
     setRemoteConnection('Connected', 'connected');
     setRemoteFeedback('Ready');
     setRemoteControlsEnabled(true);
@@ -234,14 +234,14 @@ import {
     remoteText.value = '';
     setRemoteControlsEnabled(false);
     const details = {
-      expired: ['Connection expired', 'This pairing request expired. Scan a new QR code from your TV to control it again.'],
-      revoked: ['Connection revoked', 'Your TV ended this pairing. Scan a new QR code from your TV to control it again.'],
-      disconnected: ['Disconnected', 'You are no longer controlling your TV. Scan a new QR code from your TV to connect again.'],
-      networkError: ['Network error', 'Check that both devices are on the same network, then scan a new QR code from your TV.'],
+      expired: ['Session expired', 'Scan a new QR code on the TV.'],
+      revoked: ['Disconnected', 'The TV ended this session. Scan a new QR code.'],
+      disconnected: ['Disconnected', 'Scan a new QR code on the TV to reconnect.'],
+      networkError: ['Network error', 'Check your connection, then scan a new QR code.'],
     };
     const [title, message] = details[reason] || details.disconnected;
     setStatus(title, message, '!');
-    helpMessage.textContent = 'Your TV keyboard remains available as a fallback.';
+    helpMessage.textContent = 'You can always continue with the TV keyboard.';
   }
 
   async function sendCommand(build) {
@@ -260,7 +260,7 @@ import {
         payload,
       );
       const label = ackFeedback(ack);
-      setRemoteFeedback(label, label === 'Failed' || label === 'Not available on TV');
+      setRemoteFeedback(label, label === 'Failed' || label === 'Unavailable');
       return ack;
     } catch (error) {
       if (error instanceof TypeError || /^tv_http_5/.test(error.message)) {
@@ -317,13 +317,13 @@ import {
 
   function showConnectionError(error) {
     const messages = {
-      invalid_invitation: 'This link is invalid. Scan a new QR code from your TV.',
+      invalid_invitation: 'This QR code is invalid. Scan a new one from your TV.',
       pairing_expired: 'This TV session expired. Scan a new QR code.',
       pairing_closed: 'The TV closed this session. Scan a new QR code.',
       pairing_rejected: 'The TV could not accept this connection. Scan a new QR code.',
     };
-    setStatus('Could not connect', messages[error.message] || 'Check that both devices are on the same network and allow this page to connect to local devices. Then scan a new code.', '!');
-    helpMessage.textContent = 'Guest Wi-Fi, router isolation, or browser local-network settings can block the connection. Your TV keyboard is always available.';
+    setStatus('Couldn’t connect', messages[error.message] || 'Check that both devices are on the same Wi‑Fi, then scan a new QR code.', '!');
+    helpMessage.textContent = 'You can always continue with the TV keyboard.';
     state.sessionToken = null;
   }
 

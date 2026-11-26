@@ -38,24 +38,22 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('setup mode shows QR and an explicit approval step', (tester) async {
+  testWidgets('setup mode shows the QR and connection status', (tester) async {
     await openDialog(tester, PhonePairingMode.setup);
     expect(find.text('Set up with your phone'), findsOneWidget);
     expect(
       find.bySemanticsLabel('QR code to connect a phone to Immich TV'),
       findsOneWidget,
     );
-    expect(find.text('Approve phone'), findsNothing);
+    expect(find.text('Deny'), findsNothing);
 
-    service.emit(_snapshot(PairingPhase.approvalPending, code: '123456'));
+    service.emit(_snapshot(PairingPhase.waitingForPhone));
     await tester.pumpAndSettle();
-    expect(find.text('Approve phone'), findsOneWidget);
-    expect(find.text('Deny'), findsOneWidget);
-    expect(find.text('123456'), findsOneWidget);
+    expect(find.text('Waiting for your phone…'), findsOneWidget);
 
-    await tester.tap(find.text('Approve phone'));
+    service.emit(_snapshot(PairingPhase.active));
     await tester.pumpAndSettle();
-    expect(service.approved, isTrue);
+    expect(find.text('Connected. Continue on the TV.'), findsOneWidget);
   });
 
   testWidgets('TV layout hides the manual link and fits the viewport', (
@@ -72,14 +70,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('remote mode releases the TV UI once approved', (tester) async {
+  testWidgets('remote mode releases the TV UI once a phone connects', (
+    tester,
+  ) async {
     await openDialog(tester, PhonePairingMode.remote);
-    expect(find.text('Use your phone as a remote'), findsOneWidget);
+    expect(find.text('Phone remote'), findsOneWidget);
     expect(service.lastStartMode, PhonePairingMode.remote);
-
-    service.emit(_snapshot(PairingPhase.approvalPending, code: '654321'));
-    await tester.pumpAndSettle();
-    expect(find.text('Approve phone'), findsOneWidget);
 
     service.emit(_snapshot(PairingPhase.active));
     await tester.pumpAndSettle();
@@ -90,7 +86,7 @@ void main() {
     service._isSupported = false;
     await openDialog(tester, PhonePairingMode.remote);
     expect(
-      find.textContaining('Phone pairing is not supported on this platform'),
+      find.textContaining('Phone setup isn’t available here'),
       findsOneWidget,
     );
   });

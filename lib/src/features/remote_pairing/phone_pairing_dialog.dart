@@ -38,7 +38,6 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
   PairingSnapshot? _snapshot;
   PairingServiceFailure? _serviceFailure;
   bool _isStarting = true;
-  bool _isChangingApproval = false;
   bool _remoteConnected = false;
 
   @override
@@ -110,31 +109,6 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
         _serviceFailure = PairingServiceFailure.listenerFailed;
         _isStarting = false;
       });
-    }
-  }
-
-  Future<void> _approve() async {
-    await _changeApproval(widget.service.approve);
-  }
-
-  Future<void> _deny() async {
-    await _changeApproval(widget.service.deny);
-  }
-
-  Future<void> _changeApproval(PairingSnapshot Function() action) async {
-    setState(() => _isChangingApproval = true);
-    try {
-      final snapshot = action();
-      if (mounted) setState(() => _snapshot = snapshot);
-    } on PairingProtocolException {
-      if (mounted) {
-        setState(() {
-          _serviceFailure = PairingServiceFailure.listenerFailed;
-          _snapshot = widget.service.snapshot;
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _isChangingApproval = false);
     }
   }
 
@@ -222,14 +196,13 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
   }
 
   Widget _buildDetails(ThemeData theme) {
-    final phase = _snapshot?.phase;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           widget.mode == PhonePairingMode.remote
-              ? 'Use your phone as a remote'
+              ? 'Phone remote'
               : 'Set up with your phone',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w800,
@@ -239,8 +212,8 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
         const SizedBox(height: AppSpacing.sm),
         Text(
           widget.mode == PhonePairingMode.remote
-              ? 'Scan the code with your phone. Both devices need to be on the same home network. Scanning connects immediately; more than one phone can control this TV.'
-              : 'Scan the code with your phone. Both devices need to be on the same home network. Scanning connects immediately, with no approval step.',
+              ? 'Scan the QR to control this TV. Keep both devices on the same Wi‑Fi.'
+              : 'Scan the QR with your phone. Keep both devices on the same Wi‑Fi.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyLarge?.copyWith(
             color: AppColors.textSecondary,
@@ -249,41 +222,11 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
         const SizedBox(height: AppSpacing.lg),
         if (!_isStarting && _serviceFailure == null)
           _PairingStatus(snapshot: _snapshot),
-        if (phase == PairingPhase.approvalPending) ...[
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Confirm the code on the phone matches this TV before approving.',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _PairingButton(
-                label: 'Deny',
-                icon: Icons.close_rounded,
-                onPressed: _deny,
-                enabled: !_isChangingApproval,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _PairingButton(
-                label: 'Approve phone',
-                icon: Icons.check_rounded,
-                onPressed: _approve,
-                enabled: !_isChangingApproval,
-                primary: true,
-              ),
-            ],
-          ),
-        ],
         const SizedBox(height: AppSpacing.lg),
         Text(
           widget.mode == PhonePairingMode.remote
-              ? 'Commands go directly to this TV over your local network and only work while this app is open. You can revoke phones at any time from Settings.'
-              : 'Your setup details go directly to this TV over your local network. Sign-in and profile saving stay on this TV.',
+              ? 'Remote works while this app is open. Disconnect anytime in Settings.'
+              : 'Details go straight to this TV. Sign-in stays on the TV.',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall?.copyWith(
             color: AppColors.textMuted,
@@ -311,27 +254,27 @@ class _PairingStatus extends StatelessWidget {
     final phase = snapshot?.phase;
     final (message, color) = switch (phase) {
       PairingPhase.waitingForPhone => (
-        'Waiting for a phone to scan…',
+        'Waiting for your phone…',
         AppColors.textSecondary,
       ),
       PairingPhase.approvalPending => (
-        'Phone request. Verify the code, then approve or deny.',
-        AppColors.focus,
+        'Waiting for your phone…',
+        AppColors.textSecondary,
       ),
       PairingPhase.active => (
-        'Phone connected. Continue on the TV.',
+        'Connected. Continue on the TV.',
         const Color(0xFF80E0B8),
       ),
       PairingPhase.expired => (
-        'This pairing request expired. Close and start again.',
+        'Session expired. Scan a new QR code.',
         const Color(0xFFFFB36E),
       ),
       PairingPhase.revoked => (
-        'This pairing request was closed.',
+        'Session closed.',
         AppColors.textSecondary,
       ),
       PairingPhase.stopped ||
-      null => ('Pairing is stopped.', AppColors.textSecondary),
+      null => ('Session stopped.', AppColors.textSecondary),
     };
 
     return Column(
@@ -370,13 +313,13 @@ class _PairingFailureMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     final message = switch (failure) {
       PairingServiceFailure.unsupportedPlatform =>
-        'Phone pairing is not supported on this platform. Continue with the device keyboard.',
+        'Phone setup isn’t available here. Use the TV keyboard instead.',
       PairingServiceFailure.noLocalNetwork =>
-        'The TV has no usable private IPv4 network address. Connect it to the same Wi-Fi or wired network as your phone, then try again.',
+        'Connect the TV and your phone to the same network, then try again.',
       PairingServiceFailure.companionUnavailable =>
-        'Phone setup is not configured for this build. Continue on the TV or contact the app maintainer.',
+        'Phone setup isn’t available. Use the TV keyboard instead.',
       PairingServiceFailure.listenerFailed =>
-        'The TV could not start its local pairing service. Check the local network permission and try again.',
+        'Couldn’t start the local server. Check network permission and try again.',
     };
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -396,21 +339,16 @@ class _PairingButton extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onPressed,
-    this.enabled = true,
-    this.primary = false,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback onPressed;
-  final bool enabled;
-  final bool primary;
 
   @override
   Widget build(BuildContext context) {
     return TvFocusable(
-      onPressed: enabled ? onPressed : null,
-      enabled: enabled,
+      onPressed: onPressed,
       builder: (_, state) {
         return AnimatedContainer(
           duration: AppDurations.normal,
@@ -421,14 +359,8 @@ class _PairingButton extends StatelessWidget {
           decoration: AppFocusDecoration.surface(
             isFocused: state.isFocused,
             isActive: state.isActive,
-            isSelected: primary,
-            backgroundColor: primary
-                ? AppColors.primary
-                : AppColors.backgroundElevated,
-            activeBackgroundColor: primary
-                ? AppColors.primary
-                : AppColors.surfaceMuted,
-            selectedBackgroundColor: AppColors.primary,
+            backgroundColor: AppColors.backgroundElevated,
+            activeBackgroundColor: AppColors.surfaceMuted,
             borderRadius: BorderRadius.circular(AppRadii.md),
           ),
           child: Row(
@@ -437,15 +369,13 @@ class _PairingButton extends StatelessWidget {
               Icon(
                 icon,
                 size: 20,
-                color: primary ? AppColors.actionForeground : AppColors.textPrimary,
+                color: AppColors.textPrimary,
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 label,
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: primary
-                      ? AppColors.actionForeground
-                      : AppColors.textPrimary,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],

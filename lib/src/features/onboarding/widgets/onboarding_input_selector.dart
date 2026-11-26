@@ -145,7 +145,7 @@ class OnboardingInputSelector extends StatelessWidget {
                         focusNode: phoneFocusNode,
                         title: 'Use phone',
                         description:
-                            'Pair your phone and enter the server URL and credentials on its screen. Best when you only have the TV remote.',
+                            'Enter your server URL and sign-in details on your phone instead of typing them on the TV.',
                         icon: Icons.qr_code_2_rounded,
                         selected: false,
                         onPressed: onPhoneSetup,
