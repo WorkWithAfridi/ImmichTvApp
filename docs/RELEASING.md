@@ -24,7 +24,7 @@ Each GitHub release contains:
 Download the bundle from the GitHub Releases page and verify the checksum before distributing:
 
 ```bash
-sha256sum -c ImmichTV.v1.7.0-23.apk.sha256
+sha256sum -c ImmichTV.v2.0.0-24.apk.sha256
 ```
 
 ## Signing

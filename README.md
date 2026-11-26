@@ -78,7 +78,7 @@ Browse a personal library from the couch with a remote-friendly interface. These
 
 ## Status
 
-Actively developed and usable as a focused TV browsing client. The current release line is **1.7.0**.
+Actively developed and usable as a focused TV browsing client. The current release line is **2.0.0**.
 
 ## Server Compatibility
 

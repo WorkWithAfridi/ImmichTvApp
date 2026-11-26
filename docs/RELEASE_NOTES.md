@@ -1,12 +1,17 @@
 # Release Notes
 
-## Unreleased (phone pairing preview)
+## 2.0.0+24
 
-- **Phone remote** — pair a phone from Settings and use a touch D-pad, Select/Back, text entry, and playback controls to drive the TV.
-- **Continue as remote after setup** — a phone-assisted onboarding session can be reused as the remote session without re-pairing.
-- **Session feedback and revoke** — encrypted acknowledgements, connected/expired/disconnected states, and an immediate Disconnect action on the TV.
-- **Hardening** — foreground-only commands, sequence/replay/rate limits, app-background teardown, and narrow app-level action dispatch instead of raw key injection.
-- **Release gates** — security review of the plain local transport and real-device validation are still required before this ships. The companion page is now bundled and hosted by the TV app itself, so no external deployment is needed.
+Highlights for this release:
+
+- **Phone setup from the TV** — a third input-method card lets you enter the Immich server URL and sign-in details on a phone instead of typing them with the TV remote.
+- **TV-hosted companion** — the TV serves the phone page itself, so scanning the QR connects directly with no external site or deployment.
+- **Direct connection** — scanning connects immediately; there is no approval code or confirmation step on the TV.
+- **Multiple phones** — several phones can connect to the same TV and control it at once, each with its own command sequence.
+- **Phone remote** — a touch D-pad, Select/Back, text entry, and playback controls drive the TV from Settings or after setup.
+- **Focus and layout fixes** — the phone action is reachable by D-pad in Settings, the pairing dialog scales with the viewport, and sidebar navigation is cleaner.
+- **Local transport** — details and commands travel over the trusted local network without transport encryption; TV keyboard entry remains the fallback.
+- **Release gates** — security review of the plain local transport and real-device validation are still required.
 
 ## 1.7.0+23
 
