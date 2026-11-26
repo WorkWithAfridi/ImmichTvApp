@@ -29,6 +29,7 @@ import '../../shared/presentation/app_scale.dart';
 import '../../shared/presentation/app_spacing.dart';
 import '../../shared/presentation/widgets/ambient_background.dart';
 import '../../shared/presentation/widgets/authenticated_asset_image.dart';
+import '../../shared/presentation/widgets/immich_logo.dart';
 import '../../shared/presentation/widgets/loading_skeleton.dart';
 import '../../shared/presentation/widgets/on_screen_keyboard/on_screen_keyboard.dart';
 import '../../shared/presentation/widgets/rebuild_tracker.dart';
@@ -544,27 +545,11 @@ class _ProfileHeader extends StatelessWidget {
     final name = session.user.name.trim().isEmpty
         ? session.user.email
         : session.user.name;
-    final initials = name
-        .split(RegExp(r'\s+'))
-        .where((segment) => segment.isNotEmpty)
-        .take(2)
-        .map((segment) => segment.characters.first.toUpperCase())
-        .join();
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        CircleAvatar(
-          radius: scale.sizeOf(compact ? 24 : 30, min: 22, max: 30),
-          backgroundColor: AppColors.focus,
-          foregroundColor: AppColors.actionForeground,
-          child: Text(
-            initials.isEmpty ? 'U' : initials,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: scale.text(22, min: 18, max: 22),
-            ),
-          ),
+        ImmichLogo(
+          size: scale.sizeOf(compact ? 40 : 48, min: 36, max: 48),
         ),
         SizedBox(width: scale.space(AppSpacing.md, min: 14, max: 16)),
         Expanded(
