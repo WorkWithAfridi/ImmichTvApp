@@ -375,7 +375,6 @@ class _Sidebar extends StatelessWidget {
                       ),
                       _SidebarMenuButton(
                         label: 'Timeline',
-                        subtitle: 'All photos',
                         icon: Icons.grid_view_rounded,
                         isSelected: state.selectedTab == LibraryTab.timeline,
                         onPressed: () {
@@ -394,7 +393,6 @@ class _Sidebar extends StatelessWidget {
                       ),
                       _SidebarMenuButton(
                         label: 'Albums',
-                        subtitle: 'Curated collections',
                         icon: Icons.photo_album_outlined,
                         isSelected: state.selectedTab == LibraryTab.albums,
                         onPressed: () {
@@ -413,7 +411,6 @@ class _Sidebar extends StatelessWidget {
                       ),
                       _SidebarMenuButton(
                         label: 'People',
-                        subtitle: 'Faces and memories',
                         icon: Icons.people_outline_rounded,
                         isSelected: state.selectedTab == LibraryTab.people,
                         onPressed: () {
@@ -432,7 +429,6 @@ class _Sidebar extends StatelessWidget {
                       ),
                       _SidebarMenuButton(
                         label: 'Favorites',
-                        subtitle: 'Saved highlights',
                         icon: Icons.favorite_border,
                         isSelected: state.selectedTab == LibraryTab.favorites,
                         onPressed: () {
@@ -451,7 +447,6 @@ class _Sidebar extends StatelessWidget {
                       ),
                       _SidebarMenuButton(
                         label: 'Memories',
-                        subtitle: 'On this day',
                         icon: Icons.auto_awesome_outlined,
                         isSelected: state.selectedTab == LibraryTab.memories,
                         onPressed: () {
@@ -470,7 +465,6 @@ class _Sidebar extends StatelessWidget {
                       ),
                       _SidebarMenuButton(
                         label: 'Places',
-                        subtitle: 'Photos by location',
                         icon: Icons.place_outlined,
                         isSelected: state.selectedTab == LibraryTab.places,
                         onPressed: () {
@@ -494,7 +488,6 @@ class _Sidebar extends StatelessWidget {
               SizedBox(height: scale.space(AppSpacing.sm, min: 10, max: 12)),
               _SidebarMenuButton(
                 label: 'Settings',
-                subtitle: 'Profile preferences',
                 icon: Icons.settings_outlined,
                 isSelected: state.selectedTab == LibraryTab.settings,
                 onPressed: () {
@@ -633,7 +626,6 @@ class _SidebarSectionLabel extends StatelessWidget {
 class _SidebarMenuButton extends StatefulWidget {
   const _SidebarMenuButton({
     required this.label,
-    required this.subtitle,
     required this.icon,
     required this.isSelected,
     required this.onPressed,
@@ -641,7 +633,6 @@ class _SidebarMenuButton extends StatefulWidget {
   });
 
   final String label;
-  final String subtitle;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onPressed;
@@ -689,26 +680,13 @@ class _SidebarMenuButtonState extends State<_SidebarMenuButton> {
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.label,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: isActive ? Colors.white : AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        fontSize: scale.text(15, min: 13, max: 15),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textMuted,
-                        fontSize: scale.text(11, min: 10, max: 11),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  widget.label,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: isActive ? Colors.white : AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: scale.text(15, min: 13, max: 15),
+                  ),
                 ),
               ),
             ],
