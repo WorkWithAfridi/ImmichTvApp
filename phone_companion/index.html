@@ -63,7 +63,6 @@
           <span id="remoteStatusDot" class="status-dot" aria-hidden="true"></span>
           <div class="remote-name">
             <strong>Immich TV</strong>
-            <span id="remoteSession" class="session-id"></span>
           </div>
           <span id="remoteConnection" class="connection-pill">Disconnected</span>
         </div>
@@ -72,8 +71,8 @@
         <button id="backButton" class="remote-back" type="button" data-command="back"><span aria-hidden="true">←</span> Back</button>
 
         <div class="remote-group">
-          <h3>Direction</h3>
-          <div class="dpad" aria-label="Directional controls">
+          <h3>Navigate</h3>
+          <div class="dpad" aria-label="Navigation controls">
             <span aria-hidden="true"></span>
             <button class="remote-key dpad-up" type="button" data-command="up" aria-label="Up">↑</button>
             <span aria-hidden="true"></span>
@@ -87,11 +86,11 @@
         </div>
 
         <div class="remote-group">
-          <h3>Text entry</h3>
+          <h3>Text</h3>
           <label for="remoteText">Text</label>
           <input id="remoteText" name="remoteText" type="text" maxlength="256" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type something…">
           <div class="button-grid two">
-            <button class="remote-action" type="button" data-command="sendText">Send text</button>
+            <button class="remote-action" type="button" data-command="sendText">Send</button>
             <button class="remote-action" type="button" data-command="backspace">Backspace</button>
             <button class="remote-action" type="button" data-command="clearText">Clear</button>
             <button class="remote-action" type="button" data-command="submitText">Submit</button>
@@ -101,9 +100,9 @@
         <div class="remote-group">
           <h3>Playback</h3>
           <div class="button-grid three">
-            <button class="remote-action" type="button" data-command="seekBack">↶ 10s</button>
-            <button class="remote-action" type="button" data-command="togglePlayback">Play / Pause</button>
-            <button class="remote-action" type="button" data-command="seekForward">10s ↷</button>
+            <button class="remote-action" type="button" data-command="seekBack">Back 10s</button>
+            <button class="remote-action" type="button" data-command="togglePlayback">Play/Pause</button>
+            <button class="remote-action" type="button" data-command="seekForward">Forward 10s</button>
           </div>
         </div>
 

@@ -43,7 +43,6 @@ import {
   const formError = $('formError');
   const sendButton = $('sendButton');
   const remotePanel = $('remotePanel');
-  const remoteSession = $('remoteSession');
   const remoteConnection = $('remoteConnection');
   const remoteStatusDot = $('remoteStatusDot');
   const remoteFeedback = $('remoteFeedback');
@@ -183,7 +182,6 @@ import {
   function enterRemoteMode() {
     state.remoteActive = true;
     remotePanel.hidden = false;
-    remoteSession.textContent = `Session ${state.invitation.sessionId.slice(0, 6)}`;
     setStatus('Connected', 'Use the controls to navigate and play on your TV.', '✓');
     helpMessage.textContent = 'Keep this page open while connected.';
     setRemoteConnection('Connected', 'connected');
