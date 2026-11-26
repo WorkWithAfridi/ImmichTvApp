@@ -50,11 +50,13 @@ jobs:
           build_number="${version_line##*+}"
           build_version="${version_name}+${build_number}"
           apk_name="ImmichTV.v${version_name}-${build_number}.apk"
+          short_sha="${GITHUB_SHA:0:7}"
 
           echo "build_version=${build_version}" >> "$GITHUB_OUTPUT"
           echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
           echo "build_number=${build_number}" >> "$GITHUB_OUTPUT"
           echo "apk_name=${apk_name}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
 
       - name: Detect release strategy
         id: release_strategy
@@ -89,6 +91,11 @@ jobs:
           ref_name="${GITHUB_REF_NAME}"
           version_tag="${{ steps.release_strategy.outputs.version_tag }}"
           version_changed="${{ steps.release_strategy.outputs.version_changed }}"
+          version_name="${{ steps.version.outputs.version_name }}"
+          build_number="${{ steps.version.outputs.build_number }}"
+          short_sha="${{ steps.version.outputs.short_sha }}"
+          base_apk_name="${{ steps.version.outputs.apk_name }}"
+          apk_name="${base_apk_name}"
 
           if [[ "$ref_type" == "tag" ]]; then
             release_channel="versioned"
@@ -107,12 +114,13 @@ jobs:
               prerelease="true"
             fi
           else
-            release_channel="latest"
-            release_tag="master-latest"
-            release_name="Immich TV Latest Master Build"
-            # Keep the rolling build non-prerelease so GitHub shows it as
-            # "Latest" in the repository sidebar instead of a tag count.
-            prerelease="false"
+            # Every master push gets its own versioned release. The short commit
+            # keeps the tag unique so re-runs update rather than collide.
+            release_channel="commit"
+            release_tag="v${version_name}-${build_number}-g${short_sha}"
+            release_name="Immich TV ${version_name} (${short_sha})"
+            prerelease="true"
+            apk_name="ImmichTV.v${version_name}-${build_number}-g${short_sha}.apk"
           fi
 
           release_slug="$(printf '%s' "$release_tag" | tr '/ ' '--')"
@@ -123,6 +131,7 @@ jobs:
           echo "release_tag=${release_tag}" >> "$GITHUB_OUTPUT"
           echo "release_name=${release_name}" >> "$GITHUB_OUTPUT"
           echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
+          echo "apk_name=${apk_name}" >> "$GITHUB_OUTPUT"
           echo "metadata_name=${metadata_name}" >> "$GITHUB_OUTPUT"
           echo "notes_name=${notes_name}" >> "$GITHUB_OUTPUT"
 
@@ -164,13 +173,13 @@ jobs:
         shell: bash
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk \
-            "build/app/outputs/flutter-apk/${{ steps.version.outputs.apk_name }}"
+            "build/app/outputs/flutter-apk/${{ steps.release_meta.outputs.apk_name }}"
 
       - name: Generate checksum and metadata
         id: asset_meta
         shell: bash
         run: |
-          apk_path="build/app/outputs/flutter-apk/${{ steps.version.outputs.apk_name }}"
+          apk_path="build/app/outputs/flutter-apk/${{ steps.release_meta.outputs.apk_name }}"
           apk_sha256="$(sha256sum "$apk_path" | awk '{print $1}')"
           apk_size_bytes="$(stat -c%s "$apk_path")"
           created_at_utc="$(date -u +"%Y-%m-%d %H:%M:%S UTC")"
@@ -184,7 +193,7 @@ jobs:
             echo "version_name=${{ steps.version.outputs.version_name }}"
             echo "build_number=${{ steps.version.outputs.build_number }}"
             echo "build_version=${{ steps.version.outputs.build_version }}"
-            echo "apk_name=${{ steps.version.outputs.apk_name }}"
+            echo "apk_name=${{ steps.release_meta.outputs.apk_name }}"
             echo "apk_size_bytes=${apk_size_bytes}"
             echo "apk_sha256=${apk_sha256}"
             echo "commit_sha=${GITHUB_SHA}"
@@ -199,7 +208,7 @@ jobs:
           BUILD_VERSION="${{ steps.version.outputs.build_version }}" \
           VERSION_NAME="${{ steps.version.outputs.version_name }}" \
           BUILD_NUMBER="${{ steps.version.outputs.build_number }}" \
-          APK_NAME="${{ steps.version.outputs.apk_name }}" \
+          APK_NAME="${{ steps.release_meta.outputs.apk_name }}" \
           METADATA_NAME="${{ steps.release_meta.outputs.metadata_name }}" \
           NOTES_NAME="${{ steps.release_meta.outputs.notes_name }}" \
           APK_SHA256="${apk_sha256}" \
@@ -211,34 +220,13 @@ jobs:
           CREATED_AT_UTC="${created_at_utc}" \
           bash .github/scripts/generate_release_notes.sh "$notes_path"
 
-          printf '%s  %s\n' "$apk_sha256" "${{ steps.version.outputs.apk_name }}" \
+          printf '%s  %s\n' "$apk_sha256" "${{ steps.release_meta.outputs.apk_name }}" \
             > "${apk_path}.sha256"
 
           echo "apk_path=${apk_path}" >> "$GITHUB_OUTPUT"
           echo "apk_sha256=${apk_sha256}" >> "$GITHUB_OUTPUT"
           echo "metadata_path=${metadata_path}" >> "$GITHUB_OUTPUT"
           echo "notes_path=${notes_path}" >> "$GITHUB_OUTPUT"
-
-      - name: Remove older rolling release assets
-        if: steps.release_meta.outputs.release_channel == 'latest'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          release_json="$(gh api "repos/${{ github.repository }}/releases/tags/${{ steps.release_meta.outputs.release_tag }}" 2>/dev/null || true)"
-          if [ -z "$release_json" ]; then
-            exit 0
-          fi
-
-          while IFS= read -r asset_id; do
-            if [ -n "$asset_id" ]; then
-              gh api \
-                --method DELETE \
-                "repos/${{ github.repository }}/releases/assets/${asset_id}"
-            fi
-          done < <(
-            printf '%s' "$release_json" | jq -r '.assets[] | .id'
-          )
 
       - name: Publish GitHub release assets
         id: release
@@ -277,7 +265,7 @@ jobs:
             echo "- Release: ${{ steps.release_meta.outputs.release_name }}"
             echo "- Tag: \`${{ steps.release_meta.outputs.release_tag }}\`"
             echo "- Version: \`${{ steps.version.outputs.build_version }}\`"
-            echo "- APK: \`${{ steps.version.outputs.apk_name }}\`"
+            echo "- APK: \`${{ steps.release_meta.outputs.apk_name }}\`"
             echo "- SHA256: \`${{ steps.asset_meta.outputs.apk_sha256 }}\`"
             echo "- Release URL: ${{ steps.release.outputs.url }}"
           } >> "$GITHUB_STEP_SUMMARY"
