@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../shared/presentation/app_breakpoints.dart';
 import '../../shared/presentation/app_colors.dart';
 import '../../shared/presentation/app_durations.dart';
 import '../../shared/presentation/app_focus_decoration.dart';
@@ -140,7 +141,32 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final phase = _snapshot?.phase;
+    final viewport = MediaQuery.sizeOf(context);
+    final isWide = viewport.width >= AppBreakpoints.tablet;
+    final dialogWidth = (viewport.width - (isWide ? 96 : 40))
+        .clamp(360.0, isWide ? 1180.0 : 720.0)
+        .toDouble();
+    final qrSize = isWide
+        ? (viewport.height * 0.42).clamp(240.0, 420.0).toDouble()
+        : (viewport.width * 0.52).clamp(200.0, 300.0).toDouble();
+
+    final content = isWide
+        ? Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: _buildQrPanel(theme, qrSize)),
+              SizedBox(width: AppSpacing.xl),
+              Expanded(child: _buildDetails(theme)),
+            ],
+          )
+        : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildQrPanel(theme, qrSize),
+              const SizedBox(height: AppSpacing.lg),
+              _buildDetails(theme),
+            ],
+          );
 
     return Dialog(
       backgroundColor: AppColors.surface,
@@ -149,122 +175,127 @@ class _PhonePairingDialogState extends State<PhonePairingDialog> {
         side: const BorderSide(color: AppColors.borderStrong),
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720, maxHeight: 760),
+        constraints: BoxConstraints(
+          maxWidth: dialogWidth,
+          maxHeight: viewport.height * 0.92,
+        ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+          padding: EdgeInsets.all(isWide ? AppSpacing.xl : AppSpacing.lg),
+          child: content,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQrPanel(ThemeData theme, double qrSize) {
+    if (_isStarting) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.focus),
+          ),
+        ),
+      );
+    }
+    if (_serviceFailure case final failure?) {
+      return _PairingFailureMessage(failure: failure);
+    }
+    final connection = _connection;
+    if (connection == null) return const SizedBox.shrink();
+
+    return Center(
+      child: Container(
+        padding: EdgeInsets.all(qrSize >= 320 ? AppSpacing.lg : AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
+        child: QrImageView(
+          data: connection.qrUri.toString(),
+          size: qrSize,
+          backgroundColor: Colors.white,
+          semanticsLabel: 'QR code to connect a phone to Immich TV',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetails(ThemeData theme) {
+    final phase = _snapshot?.phase;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          widget.mode == PhonePairingMode.remote
+              ? 'Use your phone as a remote'
+              : 'Set up with your phone',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          widget.mode == PhonePairingMode.remote
+              ? 'Scan the code with your phone. Both devices need to be on the same home network. Scanning connects immediately; more than one phone can control this TV.'
+              : 'Scan the code with your phone. Both devices need to be on the same home network. Scanning connects immediately, with no approval step.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        if (!_isStarting && _serviceFailure == null)
+          _PairingStatus(snapshot: _snapshot),
+        if (phase == PairingPhase.approvalPending) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Confirm the code on the phone matches this TV before approving.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                widget.mode == PhonePairingMode.remote
-                    ? 'Use your phone as a remote'
-                    : 'Set up with your phone',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                widget.mode == PhonePairingMode.remote
-                    ? 'Scan this code with your phone camera. Both devices need to be on the same home network. Scanning connects immediately; more than one phone can control this TV.'
-                    : 'Scan this code with your phone camera. Both devices need to be on the same home network. Scanning connects immediately, with no approval step.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              if (_isStarting)
-                const Padding(
-                  padding: EdgeInsets.all(AppSpacing.xl),
-                  child: CircularProgressIndicator(),
-                )
-              else if (_serviceFailure case final failure?)
-                _PairingFailureMessage(failure: failure)
-              else if (_connection case final connection?) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadii.md),
-                  ),
-                  child: QrImageView(
-                    data: connection.qrUri.toString(),
-                    size: 260,
-                    backgroundColor: Colors.white,
-                    semanticsLabel: 'QR code to connect a phone to Immich TV',
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'Or open this pairing link on your phone:',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                for (final uri in connection.manualUris)
-                  SelectableText(
-                    uri.toString(),
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                const SizedBox(height: AppSpacing.md),
-                _PairingStatus(snapshot: _snapshot),
-                if (phase == PairingPhase.approvalPending) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Confirm the code on the phone matches this TV before approving.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _PairingButton(
-                        label: 'Deny',
-                        icon: Icons.close_rounded,
-                        onPressed: _deny,
-                        enabled: !_isChangingApproval,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      _PairingButton(
-                        label: 'Approve phone',
-                        icon: Icons.check_rounded,
-                        onPressed: _approve,
-                        enabled: !_isChangingApproval,
-                        primary: true,
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                widget.mode == PhonePairingMode.remote
-                    ? 'Commands go directly to this TV over your local network and only work while this app is open. You can revoke phones at any time from Settings.'
-                    : 'Your setup details go directly to this TV over your local network. Sign-in and profile saving stay on this TV.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
               _PairingButton(
-                label: 'Close',
+                label: 'Deny',
                 icon: Icons.close_rounded,
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: _deny,
+                enabled: !_isChangingApproval,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _PairingButton(
+                label: 'Approve phone',
+                icon: Icons.check_rounded,
+                onPressed: _approve,
+                enabled: !_isChangingApproval,
+                primary: true,
               ),
             ],
           ),
+        ],
+        const SizedBox(height: AppSpacing.lg),
+        Text(
+          widget.mode == PhonePairingMode.remote
+              ? 'Commands go directly to this TV over your local network and only work while this app is open. You can revoke phones at any time from Settings.'
+              : 'Your setup details go directly to this TV over your local network. Sign-in and profile saving stay on this TV.',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: AppColors.textMuted,
+          ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.lg),
+        _PairingButton(
+          label: 'Close',
+          icon: Icons.close_rounded,
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+      ],
     );
   }
 }
@@ -288,7 +319,7 @@ class _PairingStatus extends StatelessWidget {
         AppColors.focus,
       ),
       PairingPhase.active => (
-        'Phone approved. Continue setup on the TV.',
+        'Phone connected. Continue on the TV.',
         const Color(0xFF80E0B8),
       ),
       PairingPhase.expired => (

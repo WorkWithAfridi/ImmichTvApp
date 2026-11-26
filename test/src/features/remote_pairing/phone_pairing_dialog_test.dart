@@ -58,6 +58,20 @@ void main() {
     expect(service.approved, isTrue);
   });
 
+  testWidgets('TV layout hides the manual link and fits the viewport', (
+    tester,
+  ) async {
+    await openDialog(tester, PhonePairingMode.setup);
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Or open this pairing link on your phone:'), findsNothing);
+    expect(find.bySemanticsLabel('QR code to connect a phone to Immich TV'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('remote mode releases the TV UI once approved', (tester) async {
     await openDialog(tester, PhonePairingMode.remote);
     expect(find.text('Use your phone as a remote'), findsOneWidget);
