@@ -36,7 +36,7 @@ sha256sum -c ImmichTV.v2.0.0-24.apk.sha256
 1. Complete `docs/ANDROID_TV_PACKAGING.md` and the TV device checklist.
 2. Work through `docs/RELEASE_CHECKLIST.md` and capture the required screenshots.
 3. Upload the APK or App Bundle, fill in the store listing using the GitHub repository description and topics, and attach the 320 x 180 TV banner.
-4. Paste `docs/RELEASE_NOTES.md` highlights into the "What's new" field.
+4. Paste the 2.0.0 text from `docs/PLAY_STORE_RELEASE_NOTES.md` into the "What's new" field. Use `docs/RELEASE_NOTES.md` for the full changelog.
 5. Publish to a staged rollout first, then monitor crashes and reviews before a full rollout.
 
 ## Post-release
