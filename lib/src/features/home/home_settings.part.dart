@@ -189,15 +189,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return KeyEventResult.ignored;
     }
 
+    // Keep this in visual order: Profile PIN, Phone remote, then Playback.
     final nodes = <FocusNode>[
       _pinOffFocusNode,
       _pinOnFocusNode,
       if (_isEnrollingPin) _pinCancelFocusNode,
       if (_isEnrollingPin) _pinSaveFocusNode,
+      _remoteConnectFocusNode,
+      if (_remoteDisconnectFocusNode.context != null)
+        _remoteDisconnectFocusNode,
       _hlsOffFocusNode,
       _hlsOnFocusNode,
-      _remoteConnectFocusNode,
-      _remoteDisconnectFocusNode,
     ];
     final currentIndex = nodes.indexWhere((node) => node.hasFocus);
     final forward =

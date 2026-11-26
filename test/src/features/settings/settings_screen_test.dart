@@ -256,6 +256,78 @@ void main() {
     await tester.pumpAndSettle();
     expect(pairingService.stopCount, 1);
   });
+
+  testWidgets('arrow keys move focus to the phone connection button', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 720);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+    addTearDown(() => tester.view.resetDevicePixelRatio());
+
+    final repository = _FakeAuthRepository(
+      profile: _savedProfile(pinEnabled: false),
+    );
+    final session = _session();
+    final pairingService = _FakePairingService();
+    addTearDown(pairingService.dispose);
+    final contentFocus = FocusNode(debugLabel: 'content');
+    addTearDown(contentFocus.dispose);
+
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<AuthRepository>.value(value: repository),
+          RepositoryProvider<PhonePairingService>.value(value: pairingService),
+        ],
+        child: MaterialApp(
+          home: BlocProvider(
+            create: (_) =>
+                SettingsCubit(authRepository: repository, session: session),
+            child: Scaffold(
+              body: SettingsScreen(
+                session: session,
+                isSidebarOpen: false,
+                primaryContentFocusNode: contentFocus,
+                menuToggleFocusNode: FocusNode(),
+                onToggleSidebar: () {},
+                onOpenSidebar: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    contentFocus.requestFocus();
+    await tester.pump();
+    for (var i = 0; i < 3; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+    }
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('settings.remote.connect'),
+      reason: 'focus: ${FocusManager.instance.primaryFocus?.debugLabel}',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('settings.hls.off'),
+      reason: 'focus: ${FocusManager.instance.primaryFocus?.debugLabel}',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      contains('settings.hls.on'),
+      reason: 'focus: ${FocusManager.instance.primaryFocus?.debugLabel}',
+    );
+  });
 }
 
 class _FakePairingService implements PhonePairingService {
