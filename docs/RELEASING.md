@@ -10,7 +10,7 @@ The single source of truth is `version:` in `pubspec.yaml` (`<major>.<minor>.<pa
 - Keep `README.md` → Current Version in sync.
 - Update `docs/RELEASE_NOTES.md` with user-facing highlights for the version.
 
-When a push to `master` changes the version, CI creates the matching `v<version>` tag automatically and publishes a versioned release. Pushes that do **not** change the version update the rolling `master-latest` release instead. Pushing a `v*` tag manually also produces a versioned release, and CI validates that the tag matches `pubspec.yaml`.
+Every push to `master` builds and publishes its own release. When the push changes the version, CI creates the matching `v<version>` tag and publishes a stable versioned release. Otherwise it publishes a prerelease tagged `v<version>-<build>-g<short-sha>`, with an APK named to match, so each commit has a distinct downloadable build. Pushing a `v*` tag manually also produces a versioned release, and CI validates that the tag matches `pubspec.yaml`.
 
 ## Release assets
 
